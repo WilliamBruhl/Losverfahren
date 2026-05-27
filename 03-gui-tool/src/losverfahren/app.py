@@ -63,6 +63,43 @@ st.caption(
     "und jede Quoten-Relaxation wird im Audit dokumentiert."
 )
 
+with st.expander("Datenformat (Spalten und Beispiel-Zeilen)", expanded=False):
+    st.markdown(
+        "Drei CSV-Dateien werden unterstützt — alle UTF-8, Komma-getrennt, "
+        "erste Zeile ist die Kopfzeile. Excel-Templates (`.xlsx`) im alten "
+        "PBD-Format werden weiterhin akzeptiert.\n\n"
+        "**1 · `candidates.csv` (Pflicht)** — eine Zeile pro Person.\n\n"
+        "```\n"
+        "ID,Geschlecht,Alterskategorie,Kanton,Ausbildung,Profil\n"
+        "K001,Mann,36-55,Nord,AbiturMeister,\n"
+        "K002,Frau,16-35,Süd,DualBachelor,\n"
+        "```\n"
+        "Spalte `Profil` ist optional (Freitext).\n\n"
+        "**2 · `population.csv` (Pflicht, Marginalen)** — eine Zeile pro "
+        "Merkmals-Ausprägung. Bevorzugt mit Spalte `count` (Personenzahl); "
+        "`share` (Anteil 0–1) wird ebenfalls akzeptiert. `note` ist frei.\n\n"
+        "```\n"
+        "feature,value,count,note\n"
+        "Geschlecht,Mann,31982,\n"
+        "Geschlecht,Frau,32640,\n"
+        "Alterskategorie,16-35,18223,Stand 2024\n"
+        "```\n\n"
+        "**3 · `population_joint.csv` (optional, gemeinsame Verteilung)** — "
+        "eine Zeile pro Kombination. Beliebig viele Dimensions-Spalten plus "
+        "`count` (oder `share`).\n\n"
+        "```\n"
+        "Geschlecht,Alterskategorie,Kanton,count\n"
+        "Mann,16-35,Nord,5612\n"
+        "Frau,56+,Süd,4933\n"
+        "```\n\n"
+        "**Brauche ich Datei 3?** Nein — die Marginalen aus Datei 2 reichen "
+        "für eine korrekte Auslosung. Die Joint-Datei sorgt dafür, dass auch "
+        "die *Kombinationen* (z.B. „junge Männer im Norden“) im Panel "
+        "realistisch vertreten sind. Bei kleinem Kandidatenpool kann sie "
+        "die Auslosung verschärfen; das Tool fällt dann automatisch auf die "
+        "Marginalen zurück und vermerkt das."
+    )
+
 
 # ---------------------------------------------------------------- helpers
 def _save_upload(upload, suffix: str) -> Path:
@@ -120,8 +157,15 @@ with st.sidebar:
             type=["csv", "xlsx"], key="pop"
         )
         joint_up = st.file_uploader(
-            "Bevölkerungsstruktur — Joint (Geschlecht×Alter×Kanton, optional)",
-            type=["csv"], key="joint"
+            "Bevölkerungsstruktur — Joint-Verteilung (optional, .csv)",
+            type=["csv"], key="joint",
+            help=(
+                "Optional. Eine zusätzliche CSV mit der gemeinsamen Verteilung "
+                "mehrerer Merkmale (z.B. Geschlecht × Alterskategorie × "
+                "Kanton). Liefert reichere Information als die Marginalen "
+                "alleine — wird automatisch zugeschaltet, sobald hochgeladen. "
+                "Format siehe »Datenformat« im Hauptbereich."
+            ),
         )
         if cand_up is None or pop_up is None:
             st.info("Mindestens Kandidaten und Marginalen hochladen, um fortzufahren.")
@@ -131,12 +175,15 @@ with st.sidebar:
         joint_path = _save_upload(joint_up, joint_up.name) if joint_up else None
 
     use_joint = st.checkbox(
-        "Joint-Quoten (Geschlecht×Alter×Kanton) zusätzlich erzwingen",
+        "Joint-Quoten zusätzlich erzwingen",
         value=joint_path is not None,
         disabled=joint_path is None,
-        help=("Wenn aktiviert, werden zusätzlich Quoten für jede Zelle der "
-              "joint Verteilung an die LP übergeben. Sonst werden nur die "
-              "Marginalen verwendet."),
+        help=(
+            "Wenn aktiviert, werden zusätzlich Quoten für jede Zelle der "
+            "joint Verteilung an die LP übergeben. Sonst werden nur die "
+            "Marginalen verwendet. Wird automatisch aktiviert, sobald eine "
+            "Joint-CSV vorhanden ist."
+        ),
     )
 
     st.header("2 · Parameter")
@@ -147,15 +194,40 @@ with st.sidebar:
 
 
 # ---------------------------------------------------------------- data load
-candidates = _load_candidates_any(cand_path)
-population_loaded, pop_warnings = _load_population_any(pop_path)
+def _fail(msg: str, exc: Exception) -> None:
+    st.error(f"**{msg}**\n\n`{type(exc).__name__}: {exc}`")
+    st.stop()
+
+try:
+    candidates = _load_candidates_any(cand_path)
+except Exception as e:  # noqa: BLE001
+    _fail(
+        "Kandidatenliste konnte nicht gelesen werden. Erwartet wird eine "
+        "CSV mit den Spalten `ID, Geschlecht, Alterskategorie, Kanton, "
+        "Ausbildung` (optional `Profil`) oder das alte PBD-Excel-Template.",
+        e,
+    )
+
+try:
+    population_loaded, pop_warnings = _load_population_any(pop_path)
+except Exception as e:  # noqa: BLE001
+    _fail(
+        "Bevölkerungs-Marginalen konnten nicht gelesen werden. Erwartet wird "
+        "eine CSV mit Spalten `feature, value, count` (oder `share`); "
+        "optional `note`.",
+        e,
+    )
 
 # Read the same population file as a raw DataFrame for the editor — this
 # preserves the admin-friendly count and note columns even though the solver
 # only needs normalised shares.
 def _read_pop_raw(path: Path) -> pd.DataFrame:
     if path.suffix.lower() == ".csv":
-        df = pd.read_csv(path)
+        # Force `note` to string so the data_editor accepts a TextColumn even
+        # when the column is entirely empty (pandas would otherwise infer
+        # float / NaN and Streamlit rejects the text config).
+        df = pd.read_csv(path, dtype={"note": str}, keep_default_na=False,
+                         na_values=[""])
     else:
         # Legacy xlsx path: synthesise a DataFrame from the marginals.
         rows = []
@@ -169,16 +241,32 @@ def _read_pop_raw(path: Path) -> pd.DataFrame:
         df["share"] = pd.NA
     if "note" not in df.columns:
         df["note"] = ""
+    df["note"] = df["note"].fillna("").astype(str)
     return df[["feature", "value", "count", "share", "note"]]
 
-raw_pop_df = _read_pop_raw(pop_path)
+try:
+    raw_pop_df = _read_pop_raw(pop_path)
+except Exception as e:  # noqa: BLE001
+    _fail("Bevölkerungs-CSV ließ sich nicht in eine Tabelle laden.", e)
 
 joint_loaded: list[tuple[dict[str, str], float]] = []
 joint_warnings: list[str] = []
 raw_joint_df: pd.DataFrame | None = None
 if joint_path is not None:
-    joint_loaded, joint_warnings = read_joint_population_csv(joint_path)
-    raw_joint_df = pd.read_csv(joint_path) if joint_path.suffix.lower() == ".csv" else None
+    try:
+        joint_loaded, joint_warnings = read_joint_population_csv(joint_path)
+        raw_joint_df = (
+            pd.read_csv(joint_path, keep_default_na=False, na_values=[""])
+            if joint_path.suffix.lower() == ".csv" else None
+        )
+    except Exception as e:  # noqa: BLE001
+        st.warning(
+            "Joint-Bevölkerungs-CSV konnte nicht gelesen werden — die "
+            f"Auslosung läuft nur mit den Marginalen weiter. Details: "
+            f"`{type(e).__name__}: {e}`"
+        )
+        joint_path = None
+        joint_loaded = []
 
 st.subheader("Kandidaten")
 df_c = pd.DataFrame([{"ID": c.ID, **c.attrs,
@@ -329,11 +417,24 @@ if not run:
 
 
 # ---------------------------------------------------------------- solve
-with st.spinner("Mitgliederpanel wird ausgelost …"):
-    quotas: list[Quota] = default_quotas(population, int(panel_size))
-    if use_joint and joint_loaded:
-        quotas = quotas + default_joint_quotas(joint_loaded, int(panel_size))
-    members = select_panel(candidates, quotas, int(panel_size), seed=int(seed))
+try:
+    with st.spinner("Mitgliederpanel wird ausgelost …"):
+        quotas: list[Quota] = default_quotas(population, int(panel_size))
+        if use_joint and joint_loaded:
+            quotas = quotas + default_joint_quotas(joint_loaded, int(panel_size))
+        members = select_panel(candidates, quotas, int(panel_size), seed=int(seed))
+except RuntimeError as e:
+    st.error(
+        "**Die Auslosung der Mitglieder ist nicht lösbar.** "
+        "Häufige Ursachen: Panelgröße größer als der Kandidatenpool, "
+        "Quoten verlangen mehr Personen einer Kategorie als verfügbar, "
+        "oder Joint-Verteilung zu fein für den Pool. "
+        f"\n\nDetails: `{e}`"
+    )
+    st.stop()
+except Exception as e:  # noqa: BLE001
+    st.error(f"**Unerwarteter Fehler bei der Auslosung.**\n\n`{type(e).__name__}: {e}`")
+    st.stop()
 
 substitutes = None
 sub_quotas: list[Quota] = []
