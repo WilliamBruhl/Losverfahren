@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Generated artefacts (templates + sample-data are kept, ad-hoc runs ignored)
+03-gui-tool/result.xlsx
+03-gui-tool/result.json
+03-gui-tool/runs/
+02-simple-excel-improvements/PBD_Losung-Patched.xlsx

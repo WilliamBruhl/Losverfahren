@@ -1,0 +1,178 @@
+"""Build a self-contained, hashable JSON result + manifest.
+
+The manifest contains:
+
+* SHA-256 of the canonical candidate list,
+* SHA-256 of the canonical population marginals,
+* SHA-256 of the panel (members + substitutes) and probabilities,
+* run-level SHA-256 chaining all of the above with seed + parameters.
+
+Two independent re-runs with the same inputs + seed must produce the same
+``run_hash`` — that is the integrity guarantee for archival and audit.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import hashlib
+import json
+from typing import Any
+
+from .io_excel import Candidate
+from .quotas import Quota
+from .selection import SelectionResult
+
+
+_GENERATOR = "losverfahren 0.1.0 (maximin LP + repair sampler)"
+
+
+def _sha256(payload: Any) -> str:
+    body = json.dumps(payload, ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(body).hexdigest()
+
+
+def _candidates_payload(candidates: list[Candidate]) -> list[dict]:
+    return [
+        {"ID": c.ID, "Geschlecht": c.Geschlecht,
+         "Alterskategorie": c.Alterskategorie, "Kanton": c.Kanton,
+         "Ausbildung": c.Ausbildung}
+        for c in sorted(candidates, key=lambda x: x.ID)
+    ]
+
+
+def _panel_payload(panel: list[Candidate]) -> list[str]:
+    return sorted(c.ID for c in panel)
+
+
+def _quotas_payload(quotas: list[Quota]) -> list[dict]:
+    return [
+        {"feature": q.feature, "value": q.value,
+         "share": round(q.share, 6), "lo": q.lo, "hi": q.hi}
+        for q in quotas
+    ]
+
+
+def _result_payload(r: SelectionResult, quotas: list[Quota]) -> dict:
+    bounds = [
+        {"feature": q.feature, "value": q.value, "lo_effective": lo, "hi_effective": hi}
+        for q, (lo, hi) in zip(quotas, r.effective_bounds)
+    ]
+    return {
+        "panel": _panel_payload(r.panel),
+        "minimum_probability": round(r.minimum_probability, 6),
+        "solver_status": r.solver_status,
+        "effective_bounds": bounds,
+        "relaxations": r.relaxations,
+        "realised_marginals": {
+            f"{f}={v}": n for (f, v), n in sorted(r.realised_marginals.items())
+        },
+    }
+
+
+def build_manifest(
+    *,
+    seed: int,
+    panel_size_members: int,
+    panel_size_substitutes: int,
+    candidates: list[Candidate],
+    population: dict[str, dict[str, float]],
+    quotas: list[Quota],
+    members: SelectionResult,
+    substitutes: SelectionResult | None,
+    inputs: dict[str, str] | None = None,
+) -> dict:
+    cand_payload = _candidates_payload(candidates)
+    pop_payload = {
+        f: {v: round(s, 6) for v, s in sorted(d.items())}
+        for f, d in sorted(population.items())
+    }
+    quotas_payload = _quotas_payload(quotas)
+    members_payload = _result_payload(members, quotas)
+    subs_payload = _result_payload(substitutes, quotas) if substitutes else None
+
+    parts = {
+        "candidates_sha256": _sha256(cand_payload),
+        "population_sha256": _sha256(pop_payload),
+        "quotas_sha256": _sha256(quotas_payload),
+        "members_sha256": _sha256(members_payload),
+        "substitutes_sha256": _sha256(subs_payload) if subs_payload else None,
+    }
+
+    run_seed = {
+        "seed": int(seed),
+        "panel_size_members": int(panel_size_members),
+        "panel_size_substitutes": int(panel_size_substitutes),
+        "generator": _GENERATOR,
+        **parts,
+    }
+    run_hash = _sha256(run_seed)
+
+    return {
+        "generator": _GENERATOR,
+        "created_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "seed": int(seed),
+        "panel_size_members": int(panel_size_members),
+        "panel_size_substitutes": int(panel_size_substitutes),
+        "inputs": inputs or {},
+        "candidate_count": len(candidates),
+        "hashes": parts,
+        "run_hash": run_hash,
+        "population": pop_payload,
+        "quotas": quotas_payload,
+        "members": members_payload,
+        "substitutes": subs_payload,
+        "candidates": cand_payload,
+    }
+
+
+def manifest_audit_rows(manifest: dict) -> list[tuple[str, str]]:
+    """Compact audit rows derived from the manifest (for the xlsx audit sheet)."""
+    h = manifest["hashes"]
+    rows: list[tuple[str, str]] = [
+        ("Zeitpunkt", manifest["created_at"]),
+        ("Generator", manifest["generator"]),
+        ("Seed", str(manifest["seed"])),
+        ("Mitglieder (Soll)", str(manifest["panel_size_members"])),
+        ("Ersatz (Soll)", str(manifest["panel_size_substitutes"])),
+        ("Kandidaten (Anzahl)", str(manifest["candidate_count"])),
+        ("Run-Hash (SHA-256)", manifest["run_hash"]),
+        ("Kandidaten-Hash (SHA-256)", h["candidates_sha256"]),
+        ("Bevölkerung-Hash (SHA-256)", h["population_sha256"]),
+        ("Quoten-Hash (SHA-256)", h["quotas_sha256"]),
+        ("Mitglieder-Hash (SHA-256)", h["members_sha256"]),
+        ("Ersatz-Hash (SHA-256)", h["substitutes_sha256"] or "—"),
+        ("LP-Status (Mitglieder)", manifest["members"]["solver_status"]),
+        ("Min p_i (Mitglieder)",
+         f"{manifest['members']['minimum_probability']:.4f}"),
+    ]
+    if manifest["substitutes"]:
+        rows.append(("LP-Status (Ersatz)", manifest["substitutes"]["solver_status"]))
+        rows.append(("Min p_i (Ersatz)",
+                     f"{manifest['substitutes']['minimum_probability']:.4f}"))
+
+    rows.append(("", ""))
+    rows.append(("Quoten-Intervalle", "feature / value / [lo, hi] (Anteil)"))
+    for q in manifest["quotas"]:
+        rows.append((f"  {q['feature']} = {q['value']}",
+                     f"[{q['lo']}, {q['hi']}]  ({q['share']:.4f})"))
+
+    for label, key in (("Mitglieder", "members"), ("Ersatz", "substitutes")):
+        section = manifest[key]
+        if not section:
+            continue
+        rows.append(("", ""))
+        rows.append((f"Effektive Schranken — {label}", "feature / value / [lo, hi]"))
+        for b in section["effective_bounds"]:
+            rows.append((f"  {b['feature']} = {b['value']}",
+                         f"[{b['lo_effective']}, {b['hi_effective']}]"))
+        if section["relaxations"]:
+            rows.append(("", ""))
+            rows.append((f"Quoten-Anpassungen — {label}", ""))
+            for r in section["relaxations"]:
+                rows.append(("  •", r))
+        rows.append(("", ""))
+        rows.append((f"Realisierte Marginalen — {label}", ""))
+        for k, v in section["realised_marginals"].items():
+            rows.append((f"  {k}", str(v)))
+    return rows

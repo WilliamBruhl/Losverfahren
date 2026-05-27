@@ -1,0 +1,21 @@
+[project]
+name = "losverfahren"
+version = "0.1.0"
+description = "Prototype tool for stratified sortition of citizen panels"
+requires-python = ">=3.11"
+dependencies = [
+    "openpyxl>=3.1",
+    "pandas>=2.0",
+    "pulp>=2.7",
+    "streamlit>=1.30",
+]
+
+[project.scripts]
+losverfahren = "losverfahren.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

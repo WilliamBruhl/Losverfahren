@@ -1,0 +1,12 @@
+feature,value,count,note
+Geschlecht,Mann,31982,
+Geschlecht,Frau,32640,
+Alterskategorie,16-35,18223,
+Alterskategorie,36-55,20560,
+Alterskategorie,56+,25839,
+Kanton,Süd,25379,
+Kanton,Nord,39243,
+Ausbildung,GrundschuleLehre,28473,
+Ausbildung,AbiturMeister,21366,
+Ausbildung,DualBachelor,5264,
+Ausbildung,Master,6913,
