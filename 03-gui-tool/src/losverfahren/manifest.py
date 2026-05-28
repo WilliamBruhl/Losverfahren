@@ -35,9 +35,7 @@ def _sha256(payload: Any) -> str:
 
 def _candidates_payload(candidates: list[Candidate]) -> list[dict]:
     return [
-        {"ID": c.ID, "Geschlecht": c.Geschlecht,
-         "Alterskategorie": c.Alterskategorie, "Kanton": c.Kanton,
-         "Ausbildung": c.Ausbildung}
+        {"ID": c.ID, **{k: c.attrs[k] for k in sorted(c.attrs.keys())}}
         for c in sorted(candidates, key=lambda x: x.ID)
     ]
 

@@ -32,7 +32,6 @@ from losverfahren.io_csv import (  # noqa: E402
     read_population_csv,
 )
 from losverfahren.io_excel import (  # noqa: E402
-    FEATURES,
     read_candidates,
     read_population_marginals,
     write_result_workbook,
@@ -69,13 +68,24 @@ with st.expander("Datenformat (Spalten und Beispiel-Zeilen)", expanded=False):
         "Drei CSV-Dateien werden unterstützt — alle UTF-8, Komma-getrennt, "
         "erste Zeile ist die Kopfzeile. Excel-Templates (`.xlsx`) im alten "
         "PBD-Format werden weiterhin akzeptiert.\n\n"
+        "### Flexible Schemata\n"
+        "Die Merkmale (Geschlecht, Alter, Kanton, Beruf, …) sind **nicht "
+        "fest verdrahtet**: du kannst beliebige Spalten in `candidates.csv` "
+        "verwenden, solange die gleichen Namen auch in `population.csv` als "
+        "`feature`-Werte auftauchen. Sprache und Spaltenzahl sind frei.\n\n"
+        "Auch die Spalten-Kopfzeile selbst toleriert Synonyme — z.B. "
+        "`Anzahl` statt `count`, `Anteil` statt `share`, `Merkmal` statt "
+        "`feature`, `Wert` statt `value`, `Bemerkung` statt `note`, "
+        "`Nummer` statt `ID` (Liste nicht abschließend).\n\n"
         "**1 · `candidates.csv` (Pflicht)** — eine Zeile pro Person.\n\n"
         "```\n"
-        "ID,Geschlecht,Alterskategorie,Kanton,Ausbildung,Profil\n"
-        "K001,Mann,36-55,Nord,AbiturMeister,\n"
-        "K002,Frau,16-35,Süd,DualBachelor,\n"
+        "ID,Geschlecht,Alterskategorie,Kanton,Ausbildung\n"
+        "K001,Mann,36-55,Nord,AbiturMeister\n"
+        "K002,Frau,16-35,Süd,DualBachelor\n"
         "```\n"
-        "Spalte `Profil` ist optional (Freitext).\n\n"
+        "Jede Spalte außer `ID` ist ein Stratifizierungs-Merkmal. Zusätzliche "
+        "deskriptive Spalten (z.B. `Email`) werden mitgeführt, aber nur "
+        "für Quoten verwendet, wenn sie auch in `population.csv` vorkommen.\n\n"
         "**2 · `population.csv` (Pflicht, Marginalen)** — eine Zeile pro "
         "Merkmals-Ausprägung. Bevorzugt mit Spalte `count` (Personenzahl); "
         "`share` (Anteil 0–1) wird ebenfalls akzeptiert. `note` ist frei.\n\n"
@@ -111,8 +121,9 @@ def _save_upload(upload, suffix: str) -> Path:
 
 def _load_candidates_any(path: Path):
     if path.suffix.lower() == ".csv":
-        return read_candidates_csv(path)
-    return read_candidates(path)
+        cands, warnings = read_candidates_csv(path)
+        return cands, warnings
+    return read_candidates(path), []
 
 
 def _load_population_any(path: Path):
@@ -200,12 +211,12 @@ def _fail(msg: str, exc: Exception) -> None:
     st.stop()
 
 try:
-    candidates = _load_candidates_any(cand_path)
+    candidates, cand_warnings = _load_candidates_any(cand_path)
 except Exception as e:  # noqa: BLE001
     _fail(
-        "Kandidatenliste konnte nicht gelesen werden. Erwartet wird eine "
-        "CSV mit den Spalten `ID, Geschlecht, Alterskategorie, Kanton, "
-        "Ausbildung` (optional `Profil`) oder das alte PBD-Excel-Template.",
+        "Kandidatenliste konnte nicht gelesen werden. Mindestens eine Spalte "
+        "`ID` (oder ein Synonym wie `Nummer`, `Code`) plus eine "
+        "Stratifizierungs-Spalte sind erforderlich.",
         e,
     )
 
@@ -269,11 +280,103 @@ if joint_path is not None:
         joint_path = None
         joint_loaded = []
 
-st.subheader("Kandidaten")
-df_c = pd.DataFrame([{"ID": c.ID, **c.attrs,
-                      "Profil": c.Profil or ""} for c in candidates])
+st.subheader("Kandidaten (editierbar)")
+
+# Discover the active schema from the data on disk.
+cand_attr_cols: list[str] = []
+_seen: set[str] = set()
+for _c in candidates:
+    for _k in _c.attrs.keys():
+        if _k not in _seen:
+            cand_attr_cols.append(_k)
+            _seen.add(_k)
+pop_features = list(population_loaded.keys())
+active_features = [f for f in cand_attr_cols if f in pop_features]
+metadata_only = [f for f in cand_attr_cols if f not in pop_features]
+missing_in_candidates = [f for f in pop_features if f not in cand_attr_cols]
+
+with st.expander("Erkanntes Schema", expanded=False):
+    st.markdown(
+        f"- **Aktive Merkmale (Quoten)**: "
+        + (", ".join(f"`{x}`" for x in active_features) or "_keine_")
+    )
+    if metadata_only:
+        st.markdown(
+            "- **Nur deskriptiv** (in Kandidaten, nicht in Bevölkerung): "
+            + ", ".join(f"`{x}`" for x in metadata_only)
+        )
+    if missing_in_candidates:
+        st.warning(
+            "In `population.csv` definierte Merkmale, die in `candidates.csv` "
+            "fehlen — sie können nicht als Quote benutzt werden: "
+            + ", ".join(f"`{x}`" for x in missing_in_candidates)
+        )
+    if cand_warnings:
+        for w in cand_warnings:
+            st.info(w)
+
+if not active_features:
+    st.error(
+        "Keine überlappenden Merkmale zwischen `candidates.csv` und "
+        "`population.csv` gefunden. Bitte sicherstellen, dass beide Dateien "
+        "die gleichen Spalten-/`feature`-Namen verwenden (groß-/kleinschrift- "
+        "und akzentempfindlich)."
+    )
+    st.stop()
+
+# Build the candidate DataFrame with per-feature dropdown options.
+cand_rows = [{"ID": c.ID, **{k: c.attrs.get(k, "") for k in cand_attr_cols}}
+             for c in candidates]
+raw_cand_df = pd.DataFrame(cand_rows)
+for col in raw_cand_df.columns:
+    raw_cand_df[col] = raw_cand_df[col].fillna("").astype(str)
+
+# Allowed values per active feature come from population.csv — those are the
+# canonical, admin-defined values. A dropdown then proposes exactly the same
+# values that the quotas know about. Values currently used in candidates but
+# not yet in population are included so an existing entry stays editable.
+feature_options: dict[str, list[str]] = {}
+for feat in active_features:
+    opts = set(population_loaded.get(feat, {}).keys())
+    opts.update(
+        str(v).strip() for v in raw_cand_df[feat].tolist() if str(v).strip()
+    )
+    feature_options[feat] = sorted(opts)
+
+cand_col_config: dict = {"ID": st.column_config.TextColumn(
+    "ID", help="Eindeutige Kandidaten-Kennung.", required=True)}
+for feat in cand_attr_cols:
+    if feat in feature_options:
+        cand_col_config[feat] = st.column_config.SelectboxColumn(
+            feat, options=feature_options[feat],
+            help=(f"Werte stammen aus `population.csv` / bereits vorhandenen "
+                  f"Einträgen. Neue Ausprägungen zuerst in der "
+                  f"Bevölkerungs-Tabelle anlegen."),
+        )
+    else:
+        cand_col_config[feat] = st.column_config.TextColumn(
+            feat, help="Nur deskriptiv — wird für Quoten nicht verwendet."
+        )
+
 st.write(f"{len(candidates)} Kandidaten geladen.")
-st.dataframe(df_c, width='stretch', height=240)
+edited_cand_df = st.data_editor(
+    raw_cand_df, width='stretch', height=320, num_rows="dynamic",
+    key="cand_editor", column_config=cand_col_config,
+)
+
+# Rebuild the candidate list from the edited table.
+candidates = []
+for _, row in edited_cand_df.iterrows():
+    cid = str(row.get("ID") or "").strip()
+    if not cid:
+        continue
+    attrs = {
+        col: str(row[col]).strip()
+        for col in cand_attr_cols
+        if str(row.get(col) or "").strip()
+    }
+    from losverfahren.io_excel import Candidate  # local import to avoid cycle confusion
+    candidates.append(Candidate(ID=cid, attrs=attrs))
 
 
 # ---------------------------------------------------------------- population editor
@@ -297,9 +400,20 @@ if pop_warnings:
 edited_pop_df = st.data_editor(
     raw_pop_df,
     width='stretch', num_rows="dynamic",
-    disabled=["feature", "value", "share"],
+    disabled=["share"],
     key="pop_editor",
     column_config={
+        "feature": st.column_config.SelectboxColumn(
+            "feature (Merkmal)",
+            options=sorted(set(raw_pop_df["feature"].dropna().astype(str)) | set(active_features)),
+            help=("Dropdown mit bereits vorhandenen Merkmalen. Ein neues "
+                  "Merkmal anlegen: neue Zeile, Feldname in der Spalte "
+                  "`feature` direkt eintippen (das ist nur über den "
+                  "Stiftknopf möglich, sobald die Zeile aktiv ist)."),
+        ),
+        "value": st.column_config.TextColumn(
+            "value (Ausprägung)",
+            help="Frei wählbar; muss innerhalb eines Merkmals eindeutig sein."),
         "count": st.column_config.NumberColumn(
             "count (Anzahl Personen)", min_value=0, step=1, format="%d",
             help="Rohzahl aus der Bevölkerungs-Statistik."),
@@ -377,15 +491,27 @@ if joint_loaded:
             "in einer Warnbox."
         )
         if raw_joint_df is not None:
+            # Suggest values per joint dimension from population/candidates.
+            joint_dim_cols = [c for c in raw_joint_df.columns
+                              if c not in ("count", "share", "note")]
+            joint_col_config: dict = {}
+            for dim in joint_dim_cols:
+                opts = sorted(
+                    set(population_loaded.get(dim, {}).keys())
+                    | set(str(v) for v in raw_joint_df[dim].dropna().astype(str))
+                )
+                joint_col_config[dim] = st.column_config.SelectboxColumn(
+                    dim, options=opts,
+                    help=("Auswahl aus `population.csv` plus bereits vorhandene "
+                          "Werte dieser Dimension."),
+                )
+            joint_col_config["count"] = st.column_config.NumberColumn(
+                "count (Anzahl Personen)", min_value=0, step=1, format="%d")
+            joint_col_config["share"] = st.column_config.NumberColumn(
+                "share (abgeleitet)", format="%.4f")
             edited_joint_df = st.data_editor(
                 raw_joint_df, width='stretch', num_rows="dynamic",
-                key="joint_editor",
-                column_config={
-                    "count": st.column_config.NumberColumn(
-                        "count (Anzahl Personen)", min_value=0, step=1, format="%d"),
-                    "share": st.column_config.NumberColumn(
-                        "share (abgeleitet)", format="%.4f"),
-                },
+                key="joint_editor", column_config=joint_col_config,
             )
             # rebuild joint_loaded from edited data
             new_joint: list[tuple[dict[str, str], float]] = []

@@ -15,11 +15,10 @@ from .selection import SelectionResult
 def candidate_hash(candidates: Iterable[Candidate]) -> str:
     h = hashlib.sha256()
     for c in sorted(candidates, key=lambda x: x.ID):
-        h.update(
-            "|".join(
-                [c.ID, c.Geschlecht, c.Alterskategorie, c.Kanton, c.Ausbildung]
-            ).encode("utf-8")
-        )
+        parts = [c.ID]
+        for k in sorted(c.attrs.keys()):
+            parts.append(f"{k}={c.attrs[k]}")
+        h.update("|".join(parts).encode("utf-8"))
         h.update(b"\n")
     return h.hexdigest()
 

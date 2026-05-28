@@ -38,7 +38,10 @@ from .selection import select_panel
 
 def _load_candidates(path: Path):
     if path.suffix.lower() == ".csv":
-        return read_candidates_csv(path)
+        cands, warnings = read_candidates_csv(path)
+        for w in warnings:
+            print(f"  warn: {w}")
+        return cands
     return read_candidates(path)
 
 

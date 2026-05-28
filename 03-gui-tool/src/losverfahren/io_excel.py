@@ -12,7 +12,7 @@ The workbook shape is the one of ``PBD_Losung-Template.xlsx``:
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
@@ -46,28 +46,43 @@ EDU_GROUPING: dict[str, list[str]] = {
     "Master": ["Hochschule, langer Studiengang", "Universität"],
 }
 
-FEATURES = ["Geschlecht", "Alterskategorie", "Kanton", "Ausbildung"]
+# Legacy column order from the original PBD workbook. Other parts of the code
+# no longer hard‑depend on this list — the active feature set is now derived
+# at runtime from the intersection of candidates and population. The constant
+# is kept only as the default for the legacy Excel reader / writer.
+LEGACY_FEATURES = ["Geschlecht", "Alterskategorie", "Kanton", "Ausbildung"]
+FEATURES = LEGACY_FEATURES  # backwards‑compatible alias
 
 
 @dataclass
 class Candidate:
-    """One row of ``VerfügbareTeilnehmer``."""
+    """One candidate with an arbitrary set of stratification attributes.
+
+    ``attrs`` is the source of truth (a flat ``feature → value`` dict). Any
+    column name in ``candidates.csv`` other than ``ID`` is preserved here
+    verbatim, so adding a new field such as ``Beruf`` requires no code
+    change. ``Profil``, if present in legacy inputs, is treated as a regular
+    attribute but ignored by the solver unless it also appears in the
+    population file.
+    """
 
     ID: str
-    Geschlecht: str
-    Alterskategorie: str
-    Kanton: str
-    Ausbildung: str
-    Profil: str | None = None
+    attrs: dict[str, str] = field(default_factory=dict)
 
-    @property
-    def attrs(self) -> dict[str, str]:
-        return {
-            "Geschlecht": self.Geschlecht,
-            "Alterskategorie": self.Alterskategorie,
-            "Kanton": self.Kanton,
-            "Ausbildung": self.Ausbildung,
-        }
+    # ---- backwards‑compatibility shims ------------------------------
+    # Older call sites read ``c.Geschlecht`` etc. as plain attributes. We
+    # surface every key in ``attrs`` the same way, so existing code keeps
+    # working without touching every reference.
+    def __getattr__(self, name: str) -> str | None:  # pragma: no cover - shim
+        if name.startswith("_") or name in {"ID", "attrs"}:
+            raise AttributeError(name)
+        attrs = self.__dict__.get("attrs") or {}
+        if name in attrs:
+            return attrs[name]
+        # ``Profil`` was previously a typed field defaulting to ``None``.
+        if name == "Profil":
+            return None
+        raise AttributeError(name)
 
 
 def _age_bucket(age: int) -> str:
@@ -85,16 +100,16 @@ def read_candidates(path: str | Path) -> list[Candidate]:
         cid = ws.cell(r, 1).value
         if not cid:
             continue
-        out.append(
-            Candidate(
-                ID=str(cid),
-                Geschlecht=str(ws.cell(r, 2).value),
-                Alterskategorie=str(ws.cell(r, 3).value),
-                Kanton=str(ws.cell(r, 4).value),
-                Ausbildung=str(ws.cell(r, 5).value),
-                Profil=ws.cell(r, 6).value,
-            )
-        )
+        attrs = {
+            "Geschlecht": str(ws.cell(r, 2).value),
+            "Alterskategorie": str(ws.cell(r, 3).value),
+            "Kanton": str(ws.cell(r, 4).value),
+            "Ausbildung": str(ws.cell(r, 5).value),
+        }
+        profil = ws.cell(r, 6).value
+        if profil:
+            attrs["Profil"] = str(profil)
+        out.append(Candidate(ID=str(cid), attrs=attrs))
     return out
 
 
@@ -180,10 +195,21 @@ def write_result_workbook(
             del wb[name]
 
     def _write_panel(name: str, items: Iterable[Candidate]) -> None:
+        items = list(items)
         ws = wb.create_sheet(name)
-        ws.append(["ID", "Geschlecht", "Alterskategorie", "Kanton", "Ausbildung", "Profil"])
+        # Discover columns dynamically: ID + union of all attribute keys,
+        # preserving order of first appearance so the legacy column order is
+        # kept when the inputs follow it.
+        cols: list[str] = []
+        seen: set[str] = set()
         for c in items:
-            ws.append([c.ID, c.Geschlecht, c.Alterskategorie, c.Kanton, c.Ausbildung, c.Profil])
+            for k in c.attrs.keys():
+                if k not in seen:
+                    cols.append(k)
+                    seen.add(k)
+        ws.append(["ID", *cols])
+        for c in items:
+            ws.append([c.ID, *(c.attrs.get(k, "") for k in cols)])
 
     _write_panel("LosungLP_Mitglieder", members)
     _write_panel("LosungLP_Ersatz", substitutes)
