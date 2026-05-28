@@ -1,0 +1,11 @@
+Merkmal,Wert,Anzahl,Bemerkung
+Geschlecht,weiblich,2400,Einwohner ab 16
+Geschlecht,männlich,2300,
+Alter,16-29,900,
+Alter,30-49,1500,
+Alter,50-69,1500,
+Alter,70+,800,
+Ortsteil,Altstadt,1100,
+Ortsteil,Neustadt,1700,
+Ortsteil,Berg,900,
+Ortsteil,Au,1000,

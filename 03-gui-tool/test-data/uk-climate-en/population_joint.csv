@@ -1,0 +1,25 @@
+Gender,Region,Count
+Female,London,3700000
+Male,London,3450000
+Female,South East,3900000
+Male,South East,3680000
+Female,South West,2400000
+Male,South West,2290000
+Female,East of England,2560000
+Male,East of England,2430000
+Female,East Midlands,2030000
+Male,East Midlands,1965000
+Female,West Midlands,2390000
+Male,West Midlands,2305000
+Female,Yorkshire and Humber,2290000
+Male,Yorkshire and Humber,2205000
+Female,North West,2960000
+Male,North West,2830000
+Female,North East,1070000
+Male,North East,1025000
+Female,Wales,1325000
+Male,Wales,1270000
+Female,Scotland,2310000
+Male,Scotland,2185000
+Female,Northern Ireland,765000
+Male,Northern Ireland,720000

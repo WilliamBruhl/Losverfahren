@@ -1,0 +1,31 @@
+Feature,Value,Count
+Gender,Female,27500000
+Gender,Male,26500000
+AgeGroup,16-29,11000000
+AgeGroup,30-44,13500000
+AgeGroup,45-59,13000000
+AgeGroup,60+,16500000
+Region,London,7200000
+Region,South East,7600000
+Region,South West,4700000
+Region,East of England,5000000
+Region,East Midlands,4000000
+Region,West Midlands,4700000
+Region,Yorkshire and Humber,4500000
+Region,North West,5800000
+Region,North East,2100000
+Region,Wales,2600000
+Region,Scotland,4500000
+Region,Northern Ireland,1500000
+Education,Level 0-2,15000000
+Education,Level 3,12500000
+Education,Level 4+,26500000
+EthnicGroup,White,44000000
+EthnicGroup,Asian,5200000
+EthnicGroup,Black,2400000
+EthnicGroup,Mixed,1700000
+EthnicGroup,Other,750000
+ClimateConcern,Very concerned,22000000
+ClimateConcern,Fairly concerned,21500000
+ClimateConcern,Not very concerned,7500000
+ClimateConcern,Not at all concerned,3000000

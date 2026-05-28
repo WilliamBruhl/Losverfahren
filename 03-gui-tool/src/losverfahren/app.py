@@ -27,6 +27,7 @@ if str(_PKG_PARENT) not in sys.path:
     sys.path.insert(0, str(_PKG_PARENT))
 
 from losverfahren.io_csv import (  # noqa: E402
+    _read_csv_normalised,
     read_candidates_csv,
     read_joint_population_csv,
     read_population_csv,
@@ -235,11 +236,10 @@ except Exception as e:  # noqa: BLE001
 # only needs normalised shares.
 def _read_pop_raw(path: Path) -> pd.DataFrame:
     if path.suffix.lower() == ".csv":
-        # Force `note` to string so the data_editor accepts a TextColumn even
-        # when the column is entirely empty (pandas would otherwise infer
-        # float / NaN and Streamlit rejects the text config).
-        df = pd.read_csv(path, dtype={"note": str}, keep_default_na=False,
-                         na_values=[""])
+        # Use the same alias-aware reader as the solver so headers like
+        # `Merkmal/Wert/Anzahl/Bemerkung` map to feature/value/count/note.
+        rows, _fields, _warnings = _read_csv_normalised(path)
+        df = pd.DataFrame(rows)
     else:
         # Legacy xlsx path: synthesise a DataFrame from the marginals.
         rows = []
@@ -247,13 +247,17 @@ def _read_pop_raw(path: Path) -> pd.DataFrame:
             for v, s in d.items():
                 rows.append({"feature": feat, "value": v, "share": s})
         df = pd.DataFrame(rows)
-    if "count" not in df.columns:
-        df["count"] = pd.NA
-    if "share" not in df.columns:
-        df["share"] = pd.NA
-    if "note" not in df.columns:
-        df["note"] = ""
-    df["note"] = df["note"].fillna("").astype(str)
+    for col in ("feature", "value", "note"):
+        if col not in df.columns:
+            df[col] = ""
+        # Force string dtype — otherwise pandas may infer INTEGER for a
+        # `value` column that happens to contain only digit strings, which
+        # Streamlit's TextColumn / SelectboxColumn then refuse to render.
+        df[col] = df[col].fillna("").astype(str)
+    for col in ("count", "share"):
+        if col not in df.columns:
+            df[col] = pd.NA
+        df[col] = pd.to_numeric(df[col], errors="coerce")
     return df[["feature", "value", "count", "share", "note"]]
 
 try:
@@ -267,10 +271,19 @@ raw_joint_df: pd.DataFrame | None = None
 if joint_path is not None:
     try:
         joint_loaded, joint_warnings = read_joint_population_csv(joint_path)
-        raw_joint_df = (
-            pd.read_csv(joint_path, keep_default_na=False, na_values=[""])
-            if joint_path.suffix.lower() == ".csv" else None
-        )
+        if joint_path.suffix.lower() == ".csv":
+            _jrows, _jfields, _ = _read_csv_normalised(joint_path)
+            raw_joint_df = pd.DataFrame(_jrows)
+            # Force every non-numeric dimension column to string so dropdowns
+            # render even when values look numeric (e.g. age band "18").
+            for _col in raw_joint_df.columns:
+                if _col in ("count", "share"):
+                    raw_joint_df[_col] = pd.to_numeric(
+                        raw_joint_df[_col], errors="coerce")
+                else:
+                    raw_joint_df[_col] = raw_joint_df[_col].fillna("").astype(str)
+        else:
+            raw_joint_df = None
     except Exception as e:  # noqa: BLE001
         st.warning(
             "Joint-Bevölkerungs-CSV konnte nicht gelesen werden — die "

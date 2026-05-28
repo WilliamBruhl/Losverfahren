@@ -1,0 +1,18 @@
+feature,value,count,note
+Genre,Femme,1495000,Adultes 18+ (estimation IWEPS 2024, arrondi)
+Genre,Homme,1425000,Adultes 18+ (estimation IWEPS 2024, arrondi)
+Âge,18-29,495000,
+Âge,30-44,700000,
+Âge,45-59,760000,
+Âge,60-74,640000,
+Âge,75+,325000,
+Province,Hainaut,1070000,Adultes
+Province,Liège,885000,Adultes
+Province,Namur,400000,
+Province,Luxembourg,230000,
+Province,Brabant wallon,335000,
+Diplôme,Inférieur au secondaire,795000,CITE 0-2 (sans CESI ou inférieur)
+Diplôme,Secondaire,1110000,CITE 3-4 (CESS ou équivalent)
+Diplôme,Supérieur,1015000,CITE 5-8 (bachelier / master / doctorat)
+Langue,Français,2860000,Y compris bilingues francophones-dominants
+Langue,Allemand,60000,Communauté germanophone (Eupen / Sankt Vith)

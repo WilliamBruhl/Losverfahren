@@ -1,0 +1,201 @@
+ID,Gender,AgeGroup,Region,Education,EthnicGroup,ClimateConcern
+UK-0001,Male,30-44,North West,Level 4+,White,Not very concerned
+UK-0002,Male,45-59,East of England,Level 3,White,Fairly concerned
+UK-0003,Male,45-59,London,Level 4+,White,Not very concerned
+UK-0004,Male,45-59,London,Level 0-2,Black,Not very concerned
+UK-0005,Female,60+,North West,Level 0-2,Mixed,Very concerned
+UK-0006,Male,16-29,West Midlands,Level 4+,White,Fairly concerned
+UK-0007,Female,45-59,Yorkshire and Humber,Level 4+,White,Fairly concerned
+UK-0008,Male,60+,Scotland,Level 4+,White,Very concerned
+UK-0009,Male,60+,South East,Level 4+,Asian,Fairly concerned
+UK-0010,Female,30-44,South East,Level 4+,Asian,Not very concerned
+UK-0011,Female,16-29,London,Level 3,Black,Not at all concerned
+UK-0012,Male,16-29,Yorkshire and Humber,Level 4+,White,Fairly concerned
+UK-0013,Female,45-59,South East,Level 3,White,Fairly concerned
+UK-0014,Male,60+,Yorkshire and Humber,Level 4+,White,Fairly concerned
+UK-0015,Male,45-59,South East,Level 4+,White,Very concerned
+UK-0016,Male,60+,Scotland,Level 4+,White,Fairly concerned
+UK-0017,Female,45-59,South East,Level 3,White,Very concerned
+UK-0018,Male,60+,East of England,Level 0-2,White,Very concerned
+UK-0019,Female,60+,South East,Level 3,White,Very concerned
+UK-0020,Female,60+,South East,Level 4+,White,Very concerned
+UK-0021,Male,60+,North West,Level 3,White,Fairly concerned
+UK-0022,Female,30-44,West Midlands,Level 4+,Black,Very concerned
+UK-0023,Female,16-29,North West,Level 3,White,Fairly concerned
+UK-0024,Female,60+,North West,Level 4+,Mixed,Fairly concerned
+UK-0025,Female,30-44,North East,Level 3,White,Very concerned
+UK-0026,Female,30-44,South West,Level 4+,White,Very concerned
+UK-0027,Female,60+,Yorkshire and Humber,Level 4+,White,Very concerned
+UK-0028,Female,30-44,South West,Level 4+,White,Fairly concerned
+UK-0029,Female,30-44,London,Level 4+,White,Not very concerned
+UK-0030,Female,16-29,West Midlands,Level 3,Asian,Very concerned
+UK-0031,Female,45-59,East Midlands,Level 4+,White,Fairly concerned
+UK-0032,Male,60+,West Midlands,Level 4+,White,Fairly concerned
+UK-0033,Male,45-59,South West,Level 0-2,White,Very concerned
+UK-0034,Male,45-59,South East,Level 4+,White,Fairly concerned
+UK-0035,Male,30-44,South East,Level 4+,Black,Very concerned
+UK-0036,Female,60+,West Midlands,Level 4+,Asian,Very concerned
+UK-0037,Male,16-29,South East,Level 4+,White,Very concerned
+UK-0038,Female,30-44,East of England,Level 4+,Black,Very concerned
+UK-0039,Male,16-29,Yorkshire and Humber,Level 3,White,Very concerned
+UK-0040,Male,45-59,West Midlands,Level 4+,White,Fairly concerned
+UK-0041,Female,30-44,London,Level 4+,White,Very concerned
+UK-0042,Female,16-29,South West,Level 3,White,Fairly concerned
+UK-0043,Male,45-59,South West,Level 4+,White,Fairly concerned
+UK-0044,Male,16-29,South East,Level 0-2,White,Very concerned
+UK-0045,Male,45-59,South West,Level 4+,White,Very concerned
+UK-0046,Female,30-44,London,Level 4+,White,Fairly concerned
+UK-0047,Male,45-59,South West,Level 4+,Other,Not very concerned
+UK-0048,Male,45-59,North East,Level 0-2,White,Very concerned
+UK-0049,Female,45-59,East of England,Level 4+,White,Very concerned
+UK-0050,Male,30-44,London,Level 0-2,White,Fairly concerned
+UK-0051,Female,60+,Yorkshire and Humber,Level 3,White,Very concerned
+UK-0052,Female,30-44,North West,Level 4+,White,Very concerned
+UK-0053,Male,30-44,Scotland,Level 3,White,Very concerned
+UK-0054,Male,60+,North West,Level 3,White,Fairly concerned
+UK-0055,Female,30-44,South West,Level 4+,White,Very concerned
+UK-0056,Female,45-59,North East,Level 4+,White,Very concerned
+UK-0057,Female,45-59,South West,Level 4+,White,Very concerned
+UK-0058,Male,45-59,Wales,Level 4+,White,Fairly concerned
+UK-0059,Female,45-59,London,Level 4+,White,Very concerned
+UK-0060,Female,16-29,London,Level 4+,White,Fairly concerned
+UK-0061,Female,16-29,South East,Level 4+,Other,Very concerned
+UK-0062,Male,60+,East of England,Level 3,White,Fairly concerned
+UK-0063,Male,60+,London,Level 0-2,White,Very concerned
+UK-0064,Male,30-44,South West,Level 0-2,White,Fairly concerned
+UK-0065,Female,45-59,South West,Level 0-2,White,Very concerned
+UK-0066,Male,45-59,London,Level 4+,White,Fairly concerned
+UK-0067,Female,16-29,South West,Level 3,White,Fairly concerned
+UK-0068,Male,60+,Scotland,Level 3,White,Not very concerned
+UK-0069,Male,30-44,Scotland,Level 4+,White,Fairly concerned
+UK-0070,Male,45-59,South East,Level 4+,White,Very concerned
+UK-0071,Female,30-44,East Midlands,Level 3,White,Fairly concerned
+UK-0072,Female,60+,Scotland,Level 3,White,Very concerned
+UK-0073,Female,60+,East Midlands,Level 4+,White,Very concerned
+UK-0074,Female,30-44,Wales,Level 3,White,Very concerned
+UK-0075,Male,45-59,South East,Level 4+,White,Very concerned
+UK-0076,Female,45-59,London,Level 4+,Asian,Fairly concerned
+UK-0077,Female,60+,South East,Level 3,White,Very concerned
+UK-0078,Male,60+,East Midlands,Level 0-2,White,Fairly concerned
+UK-0079,Male,60+,South East,Level 0-2,White,Not very concerned
+UK-0080,Male,45-59,South East,Level 4+,White,Fairly concerned
+UK-0081,Male,30-44,South West,Level 0-2,White,Fairly concerned
+UK-0082,Male,60+,East Midlands,Level 4+,White,Not at all concerned
+UK-0083,Male,16-29,North East,Level 4+,White,Not very concerned
+UK-0084,Female,45-59,South West,Level 4+,White,Very concerned
+UK-0085,Male,60+,Northern Ireland,Level 4+,White,Very concerned
+UK-0086,Female,45-59,Yorkshire and Humber,Level 4+,White,Fairly concerned
+UK-0087,Male,30-44,West Midlands,Level 4+,Asian,Very concerned
+UK-0088,Male,30-44,London,Level 3,White,Not very concerned
+UK-0089,Female,45-59,East of England,Level 3,Mixed,Very concerned
+UK-0090,Male,30-44,Northern Ireland,Level 0-2,Asian,Very concerned
+UK-0091,Male,30-44,Scotland,Level 3,Asian,Fairly concerned
+UK-0092,Male,45-59,South West,Level 0-2,White,Very concerned
+UK-0093,Female,30-44,West Midlands,Level 0-2,White,Very concerned
+UK-0094,Female,60+,East of England,Level 4+,Asian,Very concerned
+UK-0095,Male,60+,South East,Level 4+,White,Very concerned
+UK-0096,Female,45-59,East of England,Level 4+,Asian,Very concerned
+UK-0097,Male,45-59,Yorkshire and Humber,Level 4+,White,Not very concerned
+UK-0098,Male,30-44,East of England,Level 0-2,White,Fairly concerned
+UK-0099,Female,60+,North East,Level 4+,White,Very concerned
+UK-0100,Male,45-59,Wales,Level 3,Asian,Very concerned
+UK-0101,Male,45-59,Scotland,Level 4+,White,Very concerned
+UK-0102,Female,60+,East Midlands,Level 0-2,White,Very concerned
+UK-0103,Female,45-59,South East,Level 3,Asian,Very concerned
+UK-0104,Female,60+,South East,Level 0-2,Asian,Very concerned
+UK-0105,Male,45-59,South East,Level 3,White,Very concerned
+UK-0106,Female,60+,Scotland,Level 0-2,White,Fairly concerned
+UK-0107,Male,60+,East of England,Level 3,White,Very concerned
+UK-0108,Female,30-44,North East,Level 4+,White,Very concerned
+UK-0109,Male,60+,South West,Level 4+,Black,Fairly concerned
+UK-0110,Female,16-29,East Midlands,Level 4+,White,Fairly concerned
+UK-0111,Male,16-29,North West,Level 3,White,Fairly concerned
+UK-0112,Male,45-59,East Midlands,Level 3,Asian,Not very concerned
+UK-0113,Female,16-29,North West,Level 4+,White,Very concerned
+UK-0114,Female,30-44,Yorkshire and Humber,Level 4+,Asian,Very concerned
+UK-0115,Female,30-44,East of England,Level 4+,White,Fairly concerned
+UK-0116,Female,45-59,London,Level 4+,White,Very concerned
+UK-0117,Female,60+,East Midlands,Level 4+,White,Very concerned
+UK-0118,Male,16-29,South East,Level 4+,White,Very concerned
+UK-0119,Male,30-44,Wales,Level 4+,White,Not very concerned
+UK-0120,Male,45-59,South West,Level 0-2,White,Not very concerned
+UK-0121,Female,60+,South East,Level 0-2,Asian,Fairly concerned
+UK-0122,Male,45-59,South West,Level 0-2,Mixed,Very concerned
+UK-0123,Female,60+,South East,Level 4+,Black,Fairly concerned
+UK-0124,Female,45-59,South East,Level 4+,White,Fairly concerned
+UK-0125,Male,45-59,Wales,Level 0-2,White,Fairly concerned
+UK-0126,Female,45-59,Scotland,Level 3,Asian,Fairly concerned
+UK-0127,Male,45-59,North West,Level 4+,White,Fairly concerned
+UK-0128,Male,60+,East Midlands,Level 4+,White,Fairly concerned
+UK-0129,Female,45-59,West Midlands,Level 4+,Asian,Very concerned
+UK-0130,Male,60+,Scotland,Level 4+,Asian,Fairly concerned
+UK-0131,Female,45-59,Northern Ireland,Level 3,White,Very concerned
+UK-0132,Male,45-59,Yorkshire and Humber,Level 0-2,White,Very concerned
+UK-0133,Female,30-44,Yorkshire and Humber,Level 4+,White,Not at all concerned
+UK-0134,Male,45-59,South East,Level 3,White,Very concerned
+UK-0135,Male,16-29,South East,Level 0-2,White,Very concerned
+UK-0136,Male,60+,London,Level 4+,White,Fairly concerned
+UK-0137,Male,30-44,Scotland,Level 0-2,White,Very concerned
+UK-0138,Male,30-44,South East,Level 3,White,Very concerned
+UK-0139,Female,30-44,North West,Level 4+,Other,Very concerned
+UK-0140,Female,60+,East Midlands,Level 3,White,Very concerned
+UK-0141,Female,60+,East Midlands,Level 3,White,Not very concerned
+UK-0142,Male,45-59,East of England,Level 4+,White,Fairly concerned
+UK-0143,Male,45-59,South West,Level 4+,White,Very concerned
+UK-0144,Female,45-59,Scotland,Level 0-2,White,Not at all concerned
+UK-0145,Female,45-59,Scotland,Level 4+,White,Very concerned
+UK-0146,Female,45-59,South East,Level 4+,White,Fairly concerned
+UK-0147,Male,30-44,West Midlands,Level 0-2,White,Fairly concerned
+UK-0148,Female,60+,London,Level 0-2,White,Very concerned
+UK-0149,Female,60+,South West,Level 4+,White,Very concerned
+UK-0150,Female,45-59,South East,Level 4+,White,Fairly concerned
+UK-0151,Female,45-59,North West,Level 4+,White,Fairly concerned
+UK-0152,Male,45-59,East of England,Level 0-2,White,Very concerned
+UK-0153,Male,60+,East of England,Level 3,White,Not very concerned
+UK-0154,Male,60+,South East,Level 3,Mixed,Not very concerned
+UK-0155,Male,16-29,South West,Level 4+,White,Very concerned
+UK-0156,Female,16-29,London,Level 3,White,Very concerned
+UK-0157,Female,45-59,Wales,Level 4+,White,Not very concerned
+UK-0158,Female,16-29,South East,Level 4+,White,Very concerned
+UK-0159,Female,45-59,South West,Level 0-2,White,Very concerned
+UK-0160,Female,30-44,East Midlands,Level 4+,White,Very concerned
+UK-0161,Female,16-29,East Midlands,Level 3,White,Fairly concerned
+UK-0162,Male,60+,Scotland,Level 0-2,White,Very concerned
+UK-0163,Male,30-44,North West,Level 4+,White,Fairly concerned
+UK-0164,Male,60+,Scotland,Level 3,Other,Very concerned
+UK-0165,Female,45-59,Yorkshire and Humber,Level 3,Black,Very concerned
+UK-0166,Male,60+,East of England,Level 0-2,Black,Very concerned
+UK-0167,Male,30-44,Scotland,Level 3,Black,Fairly concerned
+UK-0168,Female,45-59,South West,Level 4+,White,Fairly concerned
+UK-0169,Female,16-29,South West,Level 4+,White,Fairly concerned
+UK-0170,Female,60+,East of England,Level 4+,White,Very concerned
+UK-0171,Female,60+,London,Level 3,Mixed,Very concerned
+UK-0172,Female,45-59,Yorkshire and Humber,Level 3,White,Very concerned
+UK-0173,Female,30-44,Yorkshire and Humber,Level 4+,White,Very concerned
+UK-0174,Female,30-44,Wales,Level 4+,White,Fairly concerned
+UK-0175,Female,60+,North West,Level 4+,White,Very concerned
+UK-0176,Male,30-44,North West,Level 4+,White,Fairly concerned
+UK-0177,Female,60+,East of England,Level 4+,White,Not very concerned
+UK-0178,Female,60+,London,Level 4+,White,Fairly concerned
+UK-0179,Male,45-59,South East,Level 4+,White,Very concerned
+UK-0180,Female,60+,South East,Level 0-2,White,Very concerned
+UK-0181,Female,60+,Scotland,Level 4+,White,Fairly concerned
+UK-0182,Female,30-44,North East,Level 4+,White,Very concerned
+UK-0183,Female,16-29,Northern Ireland,Level 4+,Black,Very concerned
+UK-0184,Female,60+,South West,Level 4+,White,Very concerned
+UK-0185,Male,30-44,Yorkshire and Humber,Level 3,White,Very concerned
+UK-0186,Male,60+,Wales,Level 4+,White,Very concerned
+UK-0187,Female,45-59,Yorkshire and Humber,Level 4+,White,Not very concerned
+UK-0188,Female,16-29,Scotland,Level 4+,White,Fairly concerned
+UK-0189,Female,45-59,Yorkshire and Humber,Level 4+,White,Fairly concerned
+UK-0190,Female,45-59,North West,Level 4+,White,Fairly concerned
+UK-0191,Female,45-59,London,Level 4+,White,Fairly concerned
+UK-0192,Female,60+,Wales,Level 3,White,Fairly concerned
+UK-0193,Male,30-44,London,Level 3,White,Very concerned
+UK-0194,Male,45-59,East Midlands,Level 4+,White,Fairly concerned
+UK-0195,Male,30-44,South West,Level 3,Black,Not very concerned
+UK-0196,Female,16-29,Yorkshire and Humber,Level 4+,White,Very concerned
+UK-0197,Female,60+,North West,Level 4+,White,Very concerned
+UK-0198,Female,60+,South East,Level 4+,Asian,Very concerned
+UK-0199,Male,30-44,South East,Level 0-2,White,Not very concerned
+UK-0200,Female,60+,East of England,Level 0-2,White,Very concerned

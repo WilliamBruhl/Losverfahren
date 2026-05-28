@@ -1,0 +1,151 @@
+ID,Genre,Âge,Province,Diplôme,Langue
+WAL-001,Homme,75+,Liège,Supérieur,Français
+WAL-002,Homme,60-74,Brabant wallon,Supérieur,Français
+WAL-003,Femme,60-74,Liège,Inférieur au secondaire,Français
+WAL-004,Homme,45-59,Hainaut,Supérieur,Français
+WAL-005,Femme,45-59,Hainaut,Supérieur,Français
+WAL-006,Homme,45-59,Namur,Supérieur,Français
+WAL-007,Femme,60-74,Hainaut,Inférieur au secondaire,Français
+WAL-008,Femme,30-44,Namur,Secondaire,Français
+WAL-009,Homme,45-59,Liège,Supérieur,Français
+WAL-010,Homme,60-74,Liège,Supérieur,Français
+WAL-011,Homme,45-59,Liège,Secondaire,Français
+WAL-012,Femme,30-44,Namur,Secondaire,Français
+WAL-013,Homme,18-29,Liège,Secondaire,Français
+WAL-014,Femme,18-29,Luxembourg,Supérieur,Français
+WAL-015,Femme,30-44,Liège,Inférieur au secondaire,Français
+WAL-016,Homme,45-59,Hainaut,Supérieur,Français
+WAL-017,Femme,45-59,Liège,Supérieur,Français
+WAL-018,Femme,75+,Brabant wallon,Supérieur,Français
+WAL-019,Femme,45-59,Hainaut,Secondaire,Français
+WAL-020,Homme,75+,Hainaut,Secondaire,Français
+WAL-021,Homme,75+,Hainaut,Supérieur,Français
+WAL-022,Homme,60-74,Liège,Supérieur,Allemand
+WAL-023,Femme,45-59,Liège,Secondaire,Français
+WAL-024,Femme,60-74,Hainaut,Supérieur,Français
+WAL-025,Homme,45-59,Hainaut,Supérieur,Français
+WAL-026,Homme,18-29,Hainaut,Secondaire,Français
+WAL-027,Femme,60-74,Liège,Secondaire,Français
+WAL-028,Homme,45-59,Liège,Supérieur,Français
+WAL-029,Femme,18-29,Hainaut,Inférieur au secondaire,Français
+WAL-030,Femme,30-44,Luxembourg,Supérieur,Français
+WAL-031,Homme,60-74,Liège,Inférieur au secondaire,Français
+WAL-032,Femme,30-44,Liège,Inférieur au secondaire,Allemand
+WAL-033,Femme,45-59,Hainaut,Secondaire,Français
+WAL-034,Femme,45-59,Liège,Supérieur,Français
+WAL-035,Homme,18-29,Brabant wallon,Supérieur,Allemand
+WAL-036,Homme,45-59,Liège,Secondaire,Français
+WAL-037,Homme,18-29,Namur,Supérieur,Français
+WAL-038,Femme,18-29,Brabant wallon,Supérieur,Français
+WAL-039,Homme,18-29,Luxembourg,Secondaire,Français
+WAL-040,Femme,60-74,Liège,Secondaire,Français
+WAL-041,Homme,45-59,Luxembourg,Inférieur au secondaire,Français
+WAL-042,Homme,45-59,Namur,Secondaire,Français
+WAL-043,Homme,75+,Liège,Supérieur,Allemand
+WAL-044,Femme,45-59,Hainaut,Secondaire,Français
+WAL-045,Homme,60-74,Hainaut,Secondaire,Français
+WAL-046,Femme,18-29,Liège,Supérieur,Français
+WAL-047,Homme,18-29,Namur,Secondaire,Français
+WAL-048,Femme,75+,Liège,Supérieur,Français
+WAL-049,Homme,45-59,Brabant wallon,Supérieur,Français
+WAL-050,Femme,60-74,Hainaut,Supérieur,Français
+WAL-051,Femme,30-44,Luxembourg,Supérieur,Français
+WAL-052,Homme,75+,Brabant wallon,Supérieur,Français
+WAL-053,Femme,45-59,Namur,Inférieur au secondaire,Français
+WAL-054,Femme,45-59,Liège,Supérieur,Français
+WAL-055,Homme,60-74,Hainaut,Secondaire,Français
+WAL-056,Homme,18-29,Hainaut,Supérieur,Français
+WAL-057,Homme,60-74,Liège,Secondaire,Allemand
+WAL-058,Femme,60-74,Hainaut,Secondaire,Français
+WAL-059,Femme,45-59,Namur,Inférieur au secondaire,Français
+WAL-060,Homme,30-44,Luxembourg,Supérieur,Français
+WAL-061,Homme,75+,Hainaut,Supérieur,Français
+WAL-062,Femme,45-59,Hainaut,Supérieur,Français
+WAL-063,Homme,60-74,Brabant wallon,Inférieur au secondaire,Français
+WAL-064,Homme,30-44,Hainaut,Supérieur,Français
+WAL-065,Femme,30-44,Hainaut,Secondaire,Français
+WAL-066,Homme,18-29,Hainaut,Supérieur,Français
+WAL-067,Femme,60-74,Brabant wallon,Secondaire,Français
+WAL-068,Homme,30-44,Liège,Secondaire,Français
+WAL-069,Homme,45-59,Brabant wallon,Secondaire,Français
+WAL-070,Femme,75+,Brabant wallon,Supérieur,Français
+WAL-071,Homme,45-59,Liège,Supérieur,Français
+WAL-072,Femme,30-44,Namur,Supérieur,Français
+WAL-073,Homme,60-74,Liège,Secondaire,Français
+WAL-074,Femme,30-44,Brabant wallon,Supérieur,Français
+WAL-075,Femme,30-44,Namur,Secondaire,Français
+WAL-076,Homme,60-74,Namur,Supérieur,Français
+WAL-077,Homme,75+,Namur,Supérieur,Français
+WAL-078,Femme,60-74,Hainaut,Supérieur,Français
+WAL-079,Homme,75+,Brabant wallon,Supérieur,Français
+WAL-080,Femme,75+,Hainaut,Secondaire,Français
+WAL-081,Femme,60-74,Namur,Supérieur,Français
+WAL-082,Femme,18-29,Liège,Supérieur,Français
+WAL-083,Femme,18-29,Luxembourg,Supérieur,Français
+WAL-084,Femme,75+,Brabant wallon,Secondaire,Français
+WAL-085,Femme,60-74,Hainaut,Supérieur,Français
+WAL-086,Femme,45-59,Namur,Supérieur,Français
+WAL-087,Femme,18-29,Brabant wallon,Secondaire,Français
+WAL-088,Femme,45-59,Hainaut,Secondaire,Français
+WAL-089,Homme,30-44,Luxembourg,Inférieur au secondaire,Français
+WAL-090,Femme,18-29,Luxembourg,Supérieur,Français
+WAL-091,Femme,60-74,Luxembourg,Supérieur,Français
+WAL-092,Homme,18-29,Hainaut,Secondaire,Français
+WAL-093,Homme,30-44,Luxembourg,Secondaire,Français
+WAL-094,Homme,45-59,Hainaut,Inférieur au secondaire,Français
+WAL-095,Femme,60-74,Liège,Secondaire,Français
+WAL-096,Femme,45-59,Liège,Secondaire,Français
+WAL-097,Femme,30-44,Liège,Supérieur,Français
+WAL-098,Homme,60-74,Luxembourg,Supérieur,Français
+WAL-099,Homme,18-29,Hainaut,Secondaire,Français
+WAL-100,Femme,60-74,Hainaut,Secondaire,Français
+WAL-101,Femme,18-29,Hainaut,Secondaire,Français
+WAL-102,Homme,75+,Liège,Secondaire,Français
+WAL-103,Homme,60-74,Luxembourg,Supérieur,Français
+WAL-104,Femme,30-44,Luxembourg,Inférieur au secondaire,Français
+WAL-105,Homme,45-59,Hainaut,Supérieur,Allemand
+WAL-106,Homme,45-59,Hainaut,Secondaire,Français
+WAL-107,Homme,30-44,Hainaut,Secondaire,Français
+WAL-108,Femme,45-59,Hainaut,Inférieur au secondaire,Français
+WAL-109,Homme,45-59,Hainaut,Secondaire,Français
+WAL-110,Femme,45-59,Brabant wallon,Supérieur,Français
+WAL-111,Homme,30-44,Liège,Secondaire,Français
+WAL-112,Femme,60-74,Liège,Inférieur au secondaire,Français
+WAL-113,Femme,45-59,Hainaut,Inférieur au secondaire,Français
+WAL-114,Homme,60-74,Liège,Supérieur,Français
+WAL-115,Femme,30-44,Namur,Secondaire,Français
+WAL-116,Homme,18-29,Hainaut,Supérieur,Français
+WAL-117,Homme,30-44,Liège,Supérieur,Français
+WAL-118,Homme,45-59,Hainaut,Supérieur,Français
+WAL-119,Femme,60-74,Hainaut,Supérieur,Français
+WAL-120,Homme,30-44,Brabant wallon,Inférieur au secondaire,Français
+WAL-121,Femme,60-74,Namur,Supérieur,Français
+WAL-122,Homme,60-74,Liège,Supérieur,Français
+WAL-123,Homme,45-59,Liège,Supérieur,Français
+WAL-124,Femme,75+,Namur,Secondaire,Français
+WAL-125,Femme,60-74,Luxembourg,Supérieur,Français
+WAL-126,Homme,60-74,Namur,Secondaire,Français
+WAL-127,Homme,60-74,Liège,Supérieur,Allemand
+WAL-128,Femme,18-29,Hainaut,Secondaire,Français
+WAL-129,Femme,45-59,Liège,Supérieur,Français
+WAL-130,Homme,60-74,Luxembourg,Secondaire,Français
+WAL-131,Femme,30-44,Luxembourg,Supérieur,Français
+WAL-132,Femme,45-59,Brabant wallon,Supérieur,Allemand
+WAL-133,Homme,45-59,Namur,Inférieur au secondaire,Français
+WAL-134,Homme,30-44,Luxembourg,Supérieur,Français
+WAL-135,Homme,18-29,Liège,Inférieur au secondaire,Français
+WAL-136,Femme,60-74,Hainaut,Secondaire,Français
+WAL-137,Homme,75+,Namur,Secondaire,Français
+WAL-138,Homme,45-59,Namur,Secondaire,Français
+WAL-139,Femme,75+,Namur,Secondaire,Français
+WAL-140,Homme,75+,Liège,Secondaire,Français
+WAL-141,Femme,45-59,Namur,Supérieur,Français
+WAL-142,Femme,60-74,Liège,Secondaire,Français
+WAL-143,Homme,45-59,Liège,Secondaire,Français
+WAL-144,Homme,60-74,Liège,Supérieur,Français
+WAL-145,Homme,30-44,Liège,Supérieur,Français
+WAL-146,Homme,45-59,Hainaut,Secondaire,Français
+WAL-147,Femme,75+,Namur,Supérieur,Français
+WAL-148,Femme,30-44,Hainaut,Supérieur,Français
+WAL-149,Femme,60-74,Hainaut,Secondaire,Français
+WAL-150,Femme,18-29,Liège,Supérieur,Français
