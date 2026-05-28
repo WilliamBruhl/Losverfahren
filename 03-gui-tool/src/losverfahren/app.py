@@ -363,7 +363,7 @@ for _, row in edited_cand_df.iterrows():
         for col in cand_attr_cols
         if str(row.get(col) or "").strip()
     }
-    from losverfahren.io_excel import Candidate  # local import to avoid cycle confusion
+    from losverfahren.models import Candidate  # local import to avoid cycle confusion
     candidates.append(Candidate(ID=cid, attrs=attrs))
 
 
@@ -815,6 +815,7 @@ manifest = build_manifest(
     quotas=quotas,
     members=members,
     substitutes=substitutes,
+    substitute_quotas=sub_quotas if substitutes is not None else None,
     inputs={"candidates": str(cand_path), "population": str(pop_path)},
     population_notes=population_notes,
 )

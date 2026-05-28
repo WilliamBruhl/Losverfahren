@@ -102,6 +102,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  relaxation: {r}")
 
     substitutes = None
+    sub_quotas_effective: list = []
     if args.substitutes > 0:
         print("Solving substitutes …")
         member_ids = {c.ID for c in members.panel}
@@ -113,6 +114,7 @@ def main(argv: list[str] | None = None) -> int:
                 candidates, sub_quotas, args.substitutes, seed=args.seed + 1,
                 excluded_ids=member_ids,
             )
+            sub_quotas_effective = sub_quotas
         except RuntimeError as e:
             if joint_loaded:
                 print(f"  joint quotas infeasible for substitutes ({e}); "
@@ -122,6 +124,7 @@ def main(argv: list[str] | None = None) -> int:
                     candidates, sub_quotas, args.substitutes, seed=args.seed + 1,
                     excluded_ids=member_ids,
                 )
+                sub_quotas_effective = sub_quotas
             else:
                 raise
         print(f"  status: {substitutes.solver_status}, "
@@ -138,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
         quotas=quotas,
         members=members,
         substitutes=substitutes,
+        substitute_quotas=sub_quotas_effective or None,
         inputs={"candidates": str(args.candidates),
                 "population": str(args.population)},
         population_notes=(read_population_notes(args.population)

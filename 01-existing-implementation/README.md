@@ -14,7 +14,7 @@ critique of the methodology.
 
 | Sheet | Content |
 |---|---|
-| `VerfügbareTeilnehmer` | 71 candidates (ID, Geschlecht, Alterskategorie, Kanton, Ausbildung, Profil) — left side before the draw, right side after |
+| `VerfügbareTeilnehmer` | 71 candidates (ID, Geschlecht, Alterskategorie, Kanton, Ausbildung, Profil) — left side before the draw, right side after. The legacy Excel loader reads columns A–F only; if the sheet is ever widened, the loader must be updated to follow. |
 | `Bevölkerungsstruktur` | Population of the German‑speaking Community: age × sex × municipality × nationality, plus an education marginal |
 | `Kriterien` | Target shares per attribute value, target counts for 30 members + 15 substitutes, "Rundung OK" check |
 | `KombinationOM`, `LosungOM` | Per‑profile target counts and draw for the **ordentliche Mitglieder** |

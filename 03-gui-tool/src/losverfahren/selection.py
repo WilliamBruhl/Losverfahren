@@ -28,7 +28,7 @@ from typing import Iterable
 
 import pulp
 
-from .io_excel import Candidate
+from .models import Candidate
 from .quotas import Quota
 
 
@@ -78,16 +78,14 @@ def _effective_bounds(
 
     for feature, idxs in by_feature.items():
         # raise hi if too tight to fit panel
+        raised: dict[int, int] = {}
         guard = 0
         while sum(bounds[i][1] for i in idxs) < panel_size and guard < 2000:
             progressed = False
             for i in sorted(idxs, key=lambda j: -bounds[j][2]):
                 if bounds[i][1] < bounds[i][2]:
                     bounds[i][1] += 1
-                    log.append(
-                        f"{feature}={quotas[i].value}: hi +1 → {bounds[i][1]} "
-                        f"(per-feature relaxation)"
-                    )
+                    raised[i] = raised.get(i, 0) + 1
                     progressed = True
                     if sum(bounds[j][1] for j in idxs) >= panel_size:
                         break
@@ -98,24 +96,32 @@ def _effective_bounds(
                 )
                 break
             guard += 1
+        for i, delta in raised.items():
+            log.append(
+                f"{feature}={quotas[i].value}: hi {quotas[i].hi}→{bounds[i][1]} "
+                f"(+{delta}, per-feature relaxation)"
+            )
 
         # lower lo if sum exceeds panel size
+        lowered: dict[int, int] = {}
         guard = 0
         while sum(bounds[i][0] for i in idxs) > panel_size and guard < 2000:
             progressed = False
             for i in sorted(idxs, key=lambda j: -bounds[j][0]):
                 if bounds[i][0] > 0:
                     bounds[i][0] -= 1
-                    log.append(
-                        f"{feature}={quotas[i].value}: lo -1 → {bounds[i][0]} "
-                        f"(per-feature relaxation)"
-                    )
+                    lowered[i] = lowered.get(i, 0) + 1
                     progressed = True
                     if sum(bounds[j][0] for j in idxs) <= panel_size:
                         break
             if not progressed:
                 break
             guard += 1
+        for i, delta in lowered.items():
+            log.append(
+                f"{feature}={quotas[i].value}: lo {quotas[i].lo}→{bounds[i][0]} "
+                f"(-{delta}, per-feature relaxation)"
+            )
 
     return [(b[0], b[1]) for b in bounds], log
 
@@ -177,47 +183,76 @@ def _sample_with_repair(
     max_attempts: int = 200,
 ) -> list[Candidate]:
     for _ in range(max_attempts):
-        panel = [c for c in active if rng.random() < probabilities.get(c.ID, 0.0)]
-        outside = [c for c in active if c not in panel]
-        while len(panel) > panel_size:
-            panel.sort(key=lambda c: probabilities.get(c.ID, 0.0))
-            outside.append(panel.pop(0))
-        while len(panel) < panel_size:
-            outside.sort(key=lambda c: -probabilities.get(c.ID, 0.0))
-            panel.append(outside.pop(0))
+        panel_ids: set[str] = {
+            c.ID for c in active
+            if rng.random() < probabilities.get(c.ID, 0.0)
+        }
+        # Force panel to the right size deterministically.
+        while len(panel_ids) > panel_size:
+            # drop the in-panel candidate with the lowest probability
+            victim = min(
+                (c for c in active if c.ID in panel_ids),
+                key=lambda c: (probabilities.get(c.ID, 0.0), c.ID),
+            )
+            panel_ids.discard(victim.ID)
+        while len(panel_ids) < panel_size:
+            promote = max(
+                (c for c in active if c.ID not in panel_ids),
+                key=lambda c: (probabilities.get(c.ID, 0.0), c.ID),
+            )
+            panel_ids.add(promote.ID)
 
-        counts = _quota_counts(panel, quotas)
+        # Repair phase: swap one candidate at a time to satisfy bounds.
+        # All bookkeeping happens on the ID set; ``active`` is iterated in
+        # the canonical (sorted) order set by ``select_panel``.
+        def panel_list() -> list[Candidate]:
+            return [c for c in active if c.ID in panel_ids]
+
+        def counts_now() -> dict[int, int]:
+            return _quota_counts(panel_list(), quotas)
+
+        counts = counts_now()
         for _ in range(500):
             v = _violations(counts, bounds)
             if not v:
-                return panel
+                return panel_list()
             i = v[0]
             q = quotas[i]
             lo, hi = bounds[i]
             cnt = counts[i]
+            # Only candidates relevant to the violated quota are worth
+            # swapping — limits the search to O(|in_q|·|out_q|·M).
             if cnt < lo:
-                cand_in = [c for c in panel if not _candidate_in_quota(c, q)]
-                cand_out = [c for c in outside if _candidate_in_quota(c, q)]
+                # need more matches: swap out a non-match, swap in a match
+                cand_in = [c for c in active
+                           if c.ID in panel_ids and not _candidate_in_quota(c, q)]
+                cand_out = [c for c in active
+                            if c.ID not in panel_ids and _candidate_in_quota(c, q)]
             else:
-                cand_in = [c for c in panel if _candidate_in_quota(c, q)]
-                cand_out = [c for c in outside if not _candidate_in_quota(c, q)]
+                cand_in = [c for c in active
+                           if c.ID in panel_ids and _candidate_in_quota(c, q)]
+                cand_out = [c for c in active
+                            if c.ID not in panel_ids and not _candidate_in_quota(c, q)]
             if not cand_in or not cand_out:
                 break
-            best = None
+            best: tuple[int, str, str] | None = None
             for ci in cand_in:
+                panel_ids.discard(ci.ID)
                 for co in cand_out:
-                    new_panel = [c for c in panel if c is not ci] + [co]
-                    nv = len(_violations(_quota_counts(new_panel, quotas), bounds))
+                    panel_ids.add(co.ID)
+                    nv = len(_violations(counts_now(), bounds))
+                    panel_ids.discard(co.ID)
                     if best is None or nv < best[0]:
-                        best = (nv, ci, co)
+                        best = (nv, ci.ID, co.ID)
+                panel_ids.add(ci.ID)
             if best is None:
                 break
-            _, ci, co = best
-            panel = [c for c in panel if c is not ci] + [co]
-            outside = [c for c in outside if c is not co] + [ci]
-            counts = _quota_counts(panel, quotas)
+            _, ci_id, co_id = best
+            panel_ids.discard(ci_id)
+            panel_ids.add(co_id)
+            counts = counts_now()
         if not _violations(counts, bounds):
-            return panel
+            return panel_list()
 
     raise RuntimeError(
         "Could not produce a panel that respects all quotas after "
@@ -233,7 +268,15 @@ def select_panel(
     excluded_ids: set[str] | None = None,
 ) -> SelectionResult:
     excluded_ids = excluded_ids or set()
-    active = [c for c in candidates if c.ID not in excluded_ids]
+    # Canonical ordering by ID: makes the LP variable order and the
+    # Bernoulli sampler's consumption of ``rng.random()`` independent of
+    # the order in which rows appear in the input file. Without this,
+    # re-sorting a candidates spreadsheet in Excel would silently change
+    # the run_hash.
+    active = sorted(
+        (c for c in candidates if c.ID not in excluded_ids),
+        key=lambda c: c.ID,
+    )
     if len(active) < panel_size:
         raise ValueError(
             f"only {len(active)} candidates available for a panel of {panel_size}"

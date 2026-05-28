@@ -32,7 +32,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Iterable
 
-from .io_excel import Candidate
+from .models import Candidate
 
 
 # Aliases for the structural metadata columns (everything that is NOT a
@@ -107,8 +107,11 @@ def _read_csv_normalised(path: str | Path) -> tuple[list[dict[str, str]], list[s
     """Read ``path``, normalising metadata column names.
 
     Returns ``(rows, fieldnames_canonical, alias_warnings)``.
+
+    ``utf-8-sig`` is used so a leading BOM (frequently added by Excel)
+    does not contaminate the first column name and break header matching.
     """
-    with open(path, newline="", encoding="utf-8") as f:
+    with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         raw_fields = list(reader.fieldnames or [])
         mapping, warnings = _normalise_fieldnames(raw_fields)
@@ -191,9 +194,33 @@ def read_population_csv(path: str | Path) -> tuple[dict[str, dict[str, float]], 
         cnt = row.get("count") if has_count else None
         if cnt not in (None, ""):
             used_counts = True
-            raw[feat][val] = float(cnt)
+            try:
+                num = float(cnt)
+            except (TypeError, ValueError) as e:
+                raise ValueError(
+                    f"population.csv: non-numeric count for {feat!r}/{val!r}: {cnt!r}"
+                ) from e
+            if num < 0:
+                raise ValueError(
+                    f"population.csv: negative count for {feat!r}/{val!r}: {num}"
+                )
+            raw[feat][val] = num
         else:
-            raw[feat][val] = float(row["share"]) if (row.get("share") or "") else 0.0
+            share_raw = (row.get("share") or "")
+            if not share_raw:
+                raw[feat][val] = 0.0
+                continue
+            try:
+                num = float(share_raw)
+            except (TypeError, ValueError) as e:
+                raise ValueError(
+                    f"population.csv: non-numeric share for {feat!r}/{val!r}: {share_raw!r}"
+                ) from e
+            if num < 0:
+                raise ValueError(
+                    f"population.csv: negative share for {feat!r}/{val!r}: {num}"
+                )
+            raw[feat][val] = num
 
     warnings: list[str] = list(alias_warnings)
     normalised: dict[str, dict[str, float]] = {}
@@ -270,6 +297,10 @@ def read_joint_population_csv(
                 continue
         except (TypeError, ValueError):
             continue
+        if val < 0:
+            raise ValueError(
+                f"joint population CSV: negative weight for {criteria}: {val}"
+            )
         out.append((criteria, val))
 
     total = sum(s for _, s in out)

@@ -93,12 +93,17 @@ def hamilton(fractional: dict, total: int) -> dict:
     floors = {k: int(math.floor(v)) for k, v in fractional.items()}
     assigned = sum(floors.values())
     remaining = total - assigned
-    if remaining <= 0:
-        # If the floors already sum to >= total, shave the largest fractional
-        # parts. Should not happen with a correct probability distribution but
-        # is handled defensively.
-        order = sorted(fractional, key=lambda k: (floors[k] - fractional[k], k))
-        for k in order[: assigned - total]:
+    if remaining == 0:
+        return floors
+    if remaining < 0:
+        # Defensive: floors over-shot total (only possible with non-standard
+        # fractional inputs). Shave from the *smallest* remainders first —
+        # those cells "deserved" the floor the least, so taking the +1 away
+        # is the least disruptive choice.
+        order = sorted(
+            fractional, key=lambda k: (fractional[k] - floors[k], k)
+        )
+        for k in order[: -remaining]:
             floors[k] -= 1
         return floors
     order = sorted(fractional, key=lambda k: (-(fractional[k] - floors[k]), k))
@@ -328,6 +333,11 @@ def draw_panel(
     for c in candidates:
         key = (c["Geschlecht"], c["Alterskategorie"], c["Kanton"], c["Ausbildung"])
         by_profile[key].append(c)
+    # Sort each per-profile pool by ID so the draw is independent of the
+    # row order in the source workbook (and therefore reproducible after
+    # any local Excel re-sort).
+    for pool in by_profile.values():
+        pool.sort(key=lambda c: str(c["ID"]))
 
     rng = random.Random(seed)
     drawn: list[dict] = []

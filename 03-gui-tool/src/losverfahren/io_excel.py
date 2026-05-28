@@ -12,11 +12,12 @@ The workbook shape is the one of ``PBD_Losung-Template.xlsx``:
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
 import openpyxl
+
+from .models import Candidate
 
 
 GEMEINDE_KANTON: dict[str, str] = {
@@ -52,37 +53,6 @@ EDU_GROUPING: dict[str, list[str]] = {
 # is kept only as the default for the legacy Excel reader / writer.
 LEGACY_FEATURES = ["Geschlecht", "Alterskategorie", "Kanton", "Ausbildung"]
 FEATURES = LEGACY_FEATURES  # backwards‑compatible alias
-
-
-@dataclass
-class Candidate:
-    """One candidate with an arbitrary set of stratification attributes.
-
-    ``attrs`` is the source of truth (a flat ``feature → value`` dict). Any
-    column name in ``candidates.csv`` other than ``ID`` is preserved here
-    verbatim, so adding a new field such as ``Beruf`` requires no code
-    change. ``Profil``, if present in legacy inputs, is treated as a regular
-    attribute but ignored by the solver unless it also appears in the
-    population file.
-    """
-
-    ID: str
-    attrs: dict[str, str] = field(default_factory=dict)
-
-    # ---- backwards‑compatibility shims ------------------------------
-    # Older call sites read ``c.Geschlecht`` etc. as plain attributes. We
-    # surface every key in ``attrs`` the same way, so existing code keeps
-    # working without touching every reference.
-    def __getattr__(self, name: str) -> str | None:  # pragma: no cover - shim
-        if name.startswith("_") or name in {"ID", "attrs"}:
-            raise AttributeError(name)
-        attrs = self.__dict__.get("attrs") or {}
-        if name in attrs:
-            return attrs[name]
-        # ``Profil`` was previously a typed field defaulting to ``None``.
-        if name == "Profil":
-            return None
-        raise AttributeError(name)
 
 
 def _age_bucket(age: int) -> str:

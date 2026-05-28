@@ -58,8 +58,10 @@ Two files are written:
 
 * `result.xlsx` — workbook with the drawn members + substitutes, per‑candidate
   selection probability, and a full audit sheet.
-* `result.json` — canonical JSON manifest with a SHA‑256 `run_hash` that two
-  independent re-runs on the same inputs + seed are guaranteed to agree on.
+* `result.json` — canonical JSON manifest with a SHA‑256 `run_hash` that
+  two independent re-runs on the same inputs + seed are guaranteed to agree
+  on, provided the LP solver stack (`pulp` + bundled CBC) is identical. The
+  solver version is part of `run_hash`, so a solver upgrade is detectable.
 
 ## Streamlit UI
 
@@ -88,7 +90,10 @@ verwenden" radio works in either layout.
    runtime is pinned via `runtime.txt`.
 
 No editable install is required: `streamlit_app.py` puts the bundled
-`losverfahren` package on `sys.path` and re-runs the actual app file.
+`losverfahren` package on `sys.path` and re-runs the actual app file. The
+root `requirements.txt` therefore only lists the external dependencies
+(`openpyxl`, `pandas`, `pulp`, `streamlit`); the `losverfahren` package
+itself is picked up from `03-gui-tool/src/` via the `sys.path` injection.
 
 The UI:
 
@@ -115,9 +120,13 @@ welcome email prompt does not appear.
 | `result.json` | Machine‑readable canonical record. Contains the candidate list, population shares, quotas, both panels, all SHA‑256 component hashes, and a single `run_hash`. |
 
 The `run_hash` is the SHA‑256 of a canonical JSON containing the seed, the
-parameters, and the SHA‑256 of every component (candidates, population,
-quotas, members, substitutes). If anyone tampers with a value, the recomputed
-`run_hash` will not match — that is the integrity guarantee for audit.
+parameters, the solver fingerprint (`pulp` version) and the SHA‑256 of every
+component (candidates, population, quotas, substitute quotas, members,
+substitutes). If anyone tampers with a value, the recomputed `run_hash` will
+not match — that is the integrity guarantee for audit. The candidate list is
+canonicalised by ID before hashing, and the LP/sampler iterate candidates in
+that same canonical order, so re-sorting the candidates CSV in Excel does
+*not* change the `run_hash`.
 
 ## How the algorithm works
 
