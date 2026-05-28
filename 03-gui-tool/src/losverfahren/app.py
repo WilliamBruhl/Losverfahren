@@ -518,6 +518,309 @@ with st.expander("Abgeleitete Anteile (Kontrolle)", expanded=False):
             rows.append({"feature": feat, "value": v, "share (derived)": round(s, 4)})
     st.dataframe(pd.DataFrame(rows), width='stretch')
 
+# ------------------------------------------------ consistency pre-computation
+# Computed *before* the Expertenmodus-Expander so the top-level warning is
+# always visible — even when the expander is collapsed.
+raw_totals: dict[str, float] = {}
+for _, row in edited_pop_df.iterrows():
+    feat = str(row.get("feature") or "").strip()
+    if not feat:
+        continue
+    cnt = row.get("count")
+    if pd.notna(cnt):
+        try:
+            raw_totals[feat] = raw_totals.get(feat, 0.0) + float(cnt)
+        except (TypeError, ValueError):
+            pass
+
+_totals_list = [v for v in raw_totals.values() if v > 0]
+_median_total = (sorted(_totals_list)[len(_totals_list) // 2]
+                 if _totals_list else 0.0)
+
+consistency_rows: list[dict] = []
+warn_features: list[str] = []
+err_features: list[str] = []
+for feat, t in raw_totals.items():
+    dev_pct = ((t - _median_total) / _median_total * 100) if _median_total > 0 else 0.0
+    if abs(dev_pct) <= 2:
+        flag = "✓"
+    elif abs(dev_pct) <= 10:
+        flag = "⚠"; warn_features.append(feat)
+    else:
+        flag = "✗"; err_features.append(feat)
+    consistency_rows.append({
+        "feature": feat,
+        "Σ count": int(round(t)),
+        "Δ vs. Median (%)": round(dev_pct, 2),
+        "Status": flag,
+    })
+
+joint_consistency_rows: list[dict] = []
+joint_err: list[str] = []
+if joint_loaded and raw_joint_df is not None and "count" in raw_joint_df.columns:
+    _joint_total = float(pd.to_numeric(
+        raw_joint_df["count"], errors="coerce").fillna(0).sum())
+    _joint_dim_cols = [c for c in raw_joint_df.columns
+                       if c not in ("count", "share", "note")]
+    for dim in _joint_dim_cols:
+        marg = raw_totals.get(dim)
+        if not marg or _joint_total <= 0:
+            continue
+        dev = (_joint_total - marg) / marg * 100
+        if abs(dev) <= 2:
+            flag = "✓"
+        elif abs(dev) <= 10:
+            flag = "⚠"
+        else:
+            flag = "✗"; joint_err.append(dim)
+        joint_consistency_rows.append({
+            "Joint deckt": dim,
+            "Σ Joint count": int(round(_joint_total)),
+            "Σ Marginal count": int(round(marg)),
+            "Δ (%)": round(dev, 2),
+            "Status": flag,
+        })
+
+# Surface the warning at the top level so it is visible without opening
+# the expander.
+if err_features:
+    st.error(
+        "**Inkonsistente Bevölkerungs-Summen**: "
+        + ", ".join(f"`{f}`" for f in err_features)
+        + f" weichen > 10 % vom Median ({int(round(_median_total)):,} Personen) ab. "
+          "Das deutet meist auf unterschiedliche Stichjahre, abweichende "
+          "Altersuntergrenzen oder einen Tippfehler hin. Das Tool rechnet "
+          "trotzdem weiter (jedes Merkmal wird separat auf Summe 1 normalisiert), "
+          "aber das Resultat repräsentiert dann eine *Mischpopulation*. "
+          "Details unter »Statistik / Expertenmodus« weiter unten."
+    )
+elif warn_features:
+    st.warning(
+        "**Bevölkerungs-Summen leicht inkonsistent**: "
+        + ", ".join(f"`{f}`" for f in warn_features)
+        + " weichen 2 – 10 % vom Median ab. Details unter »Statistik / "
+          "Expertenmodus«."
+    )
+if joint_err:
+    st.error(
+        "**Joint-Verteilung passt nicht zu den Marginalen**: Summe der "
+        f"Joint-Counts weicht > 10 % von den Marginal-Summen für "
+        + ", ".join(f"`{d}`" for d in joint_err)
+        + " ab. Wahrscheinlich stammen Joint- und Marginal-Daten aus "
+          "unterschiedlichen Quellen. Bitte prüfen."
+    )
+
+# ----- candidate ↔ population drift (per-row, surfaced at top level) -----
+_n_total = len(candidates) or 1
+drift_err: list[str] = []
+drift_warn: list[str] = []
+for _feat in active_features:
+    _pop_d = population.get(_feat, {})
+    _cnt: dict[str, int] = {}
+    for _c in candidates:
+        _v = _c.attrs.get(_feat, "")
+        if _v:
+            _cnt[_v] = _cnt.get(_v, 0) + 1
+    for _v in set(_pop_d) | set(_cnt):
+        _delta_pp = abs(_cnt.get(_v, 0) / _n_total - _pop_d.get(_v, 0.0)) * 100
+        if _delta_pp > 15:
+            drift_err.append(f"`{_feat}`={_v} (Δ {_delta_pp:+.0f} pp)")
+        elif _delta_pp > 5:
+            drift_warn.append(f"`{_feat}`={_v}")
+if drift_err:
+    st.error(
+        "**Starke Pool-Verzerrung gegenüber der Bevölkerung** "
+        f"(> 15 Prozentpunkte) bei: {', '.join(drift_err[:8])}"
+        + (f" … (+{len(drift_err)-8} weitere)" if len(drift_err) > 8 else "")
+        + ". Der Solver kann das im Rahmen der Quoten ausgleichen, aber bei "
+          "kleinem Pool wird er einige Quoten relaxieren müssen. Details und "
+          "Farbkennzeichnung unter »Statistik / Expertenmodus« weiter unten."
+    )
+elif drift_warn:
+    st.warning(
+        f"**Pool weicht spürbar von der Bevölkerung ab** "
+        f"(5 – 15 pp bei {len(drift_warn)} Ausprägung(en)). Details unter "
+        "»Statistik / Expertenmodus«."
+    )
+
+# ----------------------------------------------------------- expert statistics
+with st.expander("Statistik / Expertenmodus", expanded=False):
+    st.markdown(
+        "Diagnose-Informationen über Kandidatenpool und Bevölkerungs-Vergleich "
+        "— hilfreich, um *vor* der Auslosung systematische Verzerrungen zu "
+        "erkennen."
+    )
+
+    n_cand = len(candidates)
+    n_feat = len(active_features)
+    n_desc = len(metadata_only)
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Kandidaten", n_cand)
+    col2.metric("Aktive Merkmale", n_feat)
+    col3.metric("Nur deskriptiv", n_desc)
+    col4.metric("Panel-/Pool-Quote", f"{int(panel_size)/n_cand:.1%}" if n_cand else "—")
+
+    # ---------- consistency check across feature totals ----------------
+    st.markdown("**Konsistenz-Check**")
+    st.caption(
+        "Jedes Merkmal wird *intern unabhängig* auf Summe 1 normalisiert "
+        "(`share = count / Σ count` pro Merkmal). Dadurch funktioniert das "
+        "Tool auch, wenn die Marginalen aus unterschiedlichen Quellen / "
+        "Stichjahren stammen — verbirgt aber Inkonsistenzen. Diese Tabelle "
+        "zeigt die Roh-Summen *vor* der Normalisierung."
+    )
+    if consistency_rows:
+        st.dataframe(pd.DataFrame(consistency_rows),
+                     width='stretch', hide_index=True)
+        st.caption(
+            "Median-Gesamtbevölkerung über alle Merkmale: "
+            f"**{int(round(_median_total)):,}**. ".replace(",", "'")
+            + "Toleranz: ±2 % ✓, ±10 % ⚠, darüber ✗."
+        )
+    else:
+        st.info(
+            "Keine `count`-Werte vorhanden — Konsistenz-Check übersprungen "
+            "(es werden direkt die `share`-Werte verwendet)."
+        )
+
+    if joint_consistency_rows:
+        st.caption("**Joint ↔ Marginalen** (Summen sollten übereinstimmen)")
+        st.dataframe(pd.DataFrame(joint_consistency_rows),
+                     width='stretch', hide_index=True)
+
+    # Per-feature comparison: candidate distribution vs. population.
+    st.markdown("**Verteilungs-Vergleich pro Merkmal** "
+                "(Kandidaten-Anteil vs. Bevölkerungs-Anteil)")
+    st.caption(
+        "Flagge: **✓** ≤ 5 pp Abweichung, **⚠** 5 – 15 pp (gelb hinterlegt), "
+        "**✗** > 15 pp (rot hinterlegt) — gleiche Farb-Konvention wie bei "
+        "der Quoten-Realisierung weiter unten."
+    )
+
+    def _style_drift(df: pd.DataFrame):
+        def row_style(row):
+            d = abs(float(row["Δ (pp)"]))
+            if d > 15:
+                return ["background-color: #f8d7da"] * len(row)  # red
+            if d > 5:
+                return ["background-color: #fff3cd"] * len(row)  # yellow
+            return [""] * len(row)
+        return df.style.apply(row_style, axis=1).format({
+            "Anteil_Kand.": "{:.4f}",
+            "Anteil_Bev.": "{:.4f}",
+            "Δ (pp)": "{:+.1f}",
+            "erwartet @ Panel": "{:.2f}",
+        })
+
+    for feat in active_features:
+        pop_d = population.get(feat, {})
+        cand_counts: dict[str, int] = {}
+        for c in candidates:
+            v = c.attrs.get(feat, "")
+            if v:
+                cand_counts[v] = cand_counts.get(v, 0) + 1
+        all_values = sorted(set(pop_d.keys()) | set(cand_counts.keys()))
+        rows = []
+        tvd = 0.0  # total variation distance
+        n_total = n_cand or 1
+        for v in all_values:
+            cn = cand_counts.get(v, 0)
+            cs = cn / n_total
+            ps = pop_d.get(v, 0.0)
+            delta_pp = (cs - ps) * 100
+            expected = ps * int(panel_size)
+            min_needed = int(round(ps * int(panel_size) - 0.499)) if ps else 0
+            min_needed = max(0, min_needed)
+            tvd += abs(cs - ps)
+            if abs(delta_pp) > 15:
+                drift_flag = "✗"
+            elif abs(delta_pp) > 5:
+                drift_flag = "⚠"
+            else:
+                drift_flag = "✓"
+            rows.append({
+                "value": v,
+                "n_Kand.": cn,
+                "Anteil_Kand.": round(cs, 4),
+                "Anteil_Bev.": round(ps, 4),
+                "Δ (pp)": round(delta_pp, 1),
+                "Drift": drift_flag,
+                "erwartet @ Panel": round(expected, 2),
+                "Pool-OK?": "✓" if cn >= min_needed else "⚠",
+            })
+        tvd = tvd / 2
+        st.markdown(
+            f"*`{feat}`* — Total Variation Distance "
+            f"$d_{{TV}} = \\tfrac12 \\sum |p_{{cand}} - p_{{pop}}|$ = "
+            f"**{tvd:.3f}**  "
+            f"(0 = perfekt repräsentativ, 1 = vollständig disjunkt)"
+        )
+        st.dataframe(_style_drift(pd.DataFrame(rows)), width='stretch',
+                     hide_index=True)
+
+    # Joint coverage: useful when a joint distribution is loaded.
+    if joint_loaded:
+        st.markdown("**Joint-Zellen-Abdeckung**")
+        joint_cells_total = len(joint_loaded)
+        joint_cells_with_cands = 0
+        empty_cells: list[tuple[str, int]] = []
+        for cell_attrs, weight in joint_loaded:
+            label = " × ".join(f"{k}={v}" for k, v in cell_attrs.items())
+            n_match = sum(
+                1 for c in candidates
+                if all(c.attrs.get(k) == v for k, v in cell_attrs.items())
+            )
+            if n_match > 0:
+                joint_cells_with_cands += 1
+            else:
+                empty_cells.append((label, int(round(weight * int(panel_size)))))
+        c1, c2 = st.columns(2)
+        c1.metric("Zellen mit ≥1 Kandidaten",
+                  f"{joint_cells_with_cands} / {joint_cells_total}")
+        c2.metric("Abdeckungsquote",
+                  f"{joint_cells_with_cands/joint_cells_total:.1%}"
+                  if joint_cells_total else "—")
+        if empty_cells:
+            st.warning(
+                f"{len(empty_cells)} Joint-Zellen haben **keinen** "
+                "passenden Kandidaten — diese können nur durch "
+                "Quoten-Relaxation oder Pool-Aufstockung berücksichtigt "
+                "werden."
+            )
+            with st.expander(f"Leere Zellen ({len(empty_cells)})", expanded=False):
+                st.dataframe(
+                    pd.DataFrame(empty_cells,
+                                 columns=["Zelle", "erwartet @ Panel"]),
+                    width='stretch', hide_index=True,
+                )
+
+    # Pool feasibility: any value whose pool count is < lower quota bound?
+    risky = []
+    for q in default_quotas(population, int(panel_size)):
+        n_in_pool = sum(
+            1 for c in candidates if c.attrs.get(q.feature) == q.value
+        )
+        if n_in_pool < q.lo:
+            risky.append({
+                "feature": q.feature, "value": q.value,
+                "Quote (min)": q.lo, "im Pool": n_in_pool,
+                "Defizit": q.lo - n_in_pool,
+            })
+    if risky:
+        st.markdown("**Pool-Engpässe**")
+        st.error(
+            f"{len(risky)} Merkmals-Ausprägung(en) haben weniger Kandidaten "
+            "als die strikte Mindest-Quote verlangt. Der Solver wird hier "
+            "automatisch relaxieren (gelb markiert in der Ergebnis-Tabelle "
+            "weiter unten)."
+        )
+        st.dataframe(pd.DataFrame(risky), width='stretch', hide_index=True)
+    else:
+        st.success(
+            "Alle Marginal-Quoten sind aus dem Pool heraus theoretisch "
+            "erfüllbar (keine sofortige Relaxation nötig)."
+        )
+
 
 # ---------------------------------------------------------------- quotas preview
 st.subheader("Quoten (abgeleitet)")
@@ -658,6 +961,20 @@ if n_subs > 0:
             else:
                 raise
 
+# Population notes — live from the editor, so admin edits are persisted
+# into the result workbook and the manifest.
+population_notes: list[dict[str, str]] = []
+if "note" in edited_pop_df.columns:
+    for _, _row in edited_pop_df.iterrows():
+        _note = str(_row.get("note") or "").strip()
+        if not _note:
+            continue
+        population_notes.append({
+            "feature": str(_row.get("feature") or "").strip(),
+            "value": str(_row.get("value") or "").strip(),
+            "note": _note,
+        })
+
 manifest = build_manifest(
     seed=int(seed),
     panel_size_members=int(panel_size),
@@ -668,6 +985,7 @@ manifest = build_manifest(
     members=members,
     substitutes=substitutes,
     inputs={"candidates": str(cand_path), "population": str(pop_path)},
+    population_notes=population_notes,
 )
 
 
@@ -795,6 +1113,7 @@ write_result_workbook(
     substitutes=substitutes.panel if substitutes else [],
     probabilities=members.probabilities,
     audit_rows=manifest_audit_rows(manifest),
+    population_notes=population_notes,
 )
 json_buf = io.BytesIO()
 import json

@@ -173,12 +173,17 @@ def write_result_workbook(
     substitutes: list[Candidate],
     probabilities: dict[str, float],
     audit_rows: list[tuple[str, str]],
+    population_notes: list[dict[str, str]] | None = None,
 ) -> None:
     """Save a workbook with members, substitutes, probabilities, audit.
 
     If ``src_path`` is given (legacy Excel workflow), the original sheets are
     preserved and the new ``LosungLP_*`` sheets are appended. If ``src_path``
     is ``None`` (CSV workflow), a fresh workbook is created.
+
+    ``population_notes`` — if any rows are passed, an extra sheet
+    ``LosungLP_BevNotizen`` is appended documenting the admin's free-text
+    annotations from the population CSV (data vintage, source, caveats).
     """
 
     if src_path is not None:
@@ -190,7 +195,7 @@ def write_result_workbook(
         wb.remove(default)
 
     for name in ("LosungLP_Mitglieder", "LosungLP_Ersatz", "LosungLP_Audit",
-                 "LosungLP_Probabilities"):
+                 "LosungLP_Probabilities", "LosungLP_BevNotizen"):
         if name in wb.sheetnames:
             del wb[name]
 
@@ -224,6 +229,14 @@ def write_result_workbook(
     ws_a = wb.create_sheet("LosungLP_Audit")
     for k, v in audit_rows:
         ws_a.append([k, v])
+
+    if population_notes:
+        ws_n = wb.create_sheet("LosungLP_BevNotizen")
+        ws_n.append(["feature", "value", "note"])
+        for row in population_notes:
+            ws_n.append([row.get("feature", ""),
+                         row.get("value", ""),
+                         row.get("note", "")])
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)

@@ -1,6 +1,6 @@
 feature,value,count,note
-Genre,Femme,1495000,Adultes 18+ (estimation IWEPS 2024, arrondi)
-Genre,Homme,1425000,Adultes 18+ (estimation IWEPS 2024, arrondi)
+Genre,Femme,1495000,"Adultes 18+ (estimation IWEPS 2024, arrondi)"
+Genre,Homme,1425000,"Adultes 18+ (estimation IWEPS 2024, arrondi)"
 Âge,18-29,495000,
 Âge,30-44,700000,
 Âge,45-59,760000,

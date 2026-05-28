@@ -80,6 +80,7 @@ def build_manifest(
     members: SelectionResult,
     substitutes: SelectionResult | None,
     inputs: dict[str, str] | None = None,
+    population_notes: list[dict[str, str]] | None = None,
 ) -> dict:
     cand_payload = _candidates_payload(candidates)
     pop_payload = {
@@ -122,6 +123,7 @@ def build_manifest(
         "members": members_payload,
         "substitutes": subs_payload,
         "candidates": cand_payload,
+        "population_notes": list(population_notes or []),
     }
 
 

@@ -209,6 +209,29 @@ def read_population_csv(path: str | Path) -> tuple[dict[str, dict[str, float]], 
     return normalised, warnings
 
 
+def read_population_notes(path: str | Path) -> list[dict[str, str]]:
+    """Return non-empty ``note`` rows from a population CSV.
+
+    Notes are admin-facing free text — the solver ignores them, but they
+    are useful in the result workbook / manifest to document *why* a given
+    figure was set (data vintage, source, caveats).
+    """
+    rows, fields, _warnings = _read_csv_normalised(path)
+    if "note" not in fields:
+        return []
+    out: list[dict[str, str]] = []
+    for row in rows:
+        note = (row.get("note") or "").strip()
+        if not note:
+            continue
+        out.append({
+            "feature": (row.get("feature") or "").strip(),
+            "value": (row.get("value") or "").strip(),
+            "note": note,
+        })
+    return out
+
+
 def read_joint_population_csv(
     path: str | Path,
 ) -> tuple[list[tuple[dict[str, str], float]], list[str]]:

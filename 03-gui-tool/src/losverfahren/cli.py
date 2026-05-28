@@ -28,6 +28,7 @@ from .io_csv import (
     read_candidates_csv,
     read_joint_population_csv,
     read_population_csv,
+    read_population_notes,
     write_result_json,
 )
 from .io_excel import read_candidates, read_population_marginals, write_result_workbook
@@ -139,6 +140,8 @@ def main(argv: list[str] | None = None) -> int:
         substitutes=substitutes,
         inputs={"candidates": str(args.candidates),
                 "population": str(args.population)},
+        population_notes=(read_population_notes(args.population)
+                          if args.population.suffix.lower() == ".csv" else []),
     )
     audit_rows = manifest_audit_rows(manifest)
 
@@ -151,6 +154,7 @@ def main(argv: list[str] | None = None) -> int:
         substitutes=substitutes.panel if substitutes else [],
         probabilities=members.probabilities,
         audit_rows=audit_rows,
+        population_notes=manifest["population_notes"],
     )
     print(f"Wrote {out_xlsx}")
 
