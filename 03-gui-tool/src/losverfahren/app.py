@@ -13,12 +13,14 @@ legacy ``PBD_Losung-Template.xlsx`` workbook for backwards compatibility.
 from __future__ import annotations
 
 import io
+import json
 import sys
 import tempfile
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 # Make the script runnable both via `streamlit run path/to/app.py` and via
 # `python -m losverfahren.app` by ensuring the package is importable.
@@ -37,7 +39,7 @@ from losverfahren.io_excel import (  # noqa: E402
     read_population_marginals,
     write_result_workbook,
 )
-from losverfahren.i18n import LANGUAGES, DEFAULT_LANG, t, join_codes  # noqa: E402
+from losverfahren.i18n import LANGUAGES, DEFAULT_LANG, detect_browser_lang, t, join_codes  # noqa: E402
 from losverfahren.manifest import build_manifest, manifest_audit_rows  # noqa: E402
 from losverfahren.quotas import Quota, default_joint_quotas, default_quotas  # noqa: E402
 from losverfahren.selection import _candidate_in_quota, select_panel  # noqa: E402
@@ -90,14 +92,75 @@ def _discover_examples() -> dict[str, Path]:
     return out
 
 # Language must be initialised *before* set_page_config so the page title is
-# rendered in the right language on first paint. The selectbox below writes
-# back into the same session_state key, triggering a normal Streamlit rerun.
+# rendered in the right language on first paint. Resolution order:
+#   1. ``losverfahren_lang`` cookie — written by the JS snippet further down
+#      whenever the user changes the selectbox; sent automatically by the
+#      browser on every reload, so persistence is per-device and survives
+#      hard refreshes without polluting the URL.
+#   2. Browser ``Accept-Language`` header (de → de, anything else → en).
+#   3. ``DEFAULT_LANG`` as a final fallback.
+# A shared link therefore never carries a language preference — each
+# visitor's own cookie / browser locale decides.
 if "lang" not in st.session_state:
-    st.session_state["lang"] = DEFAULT_LANG
+    _cookie_lang: str | None = None
+    try:
+        _cookie_lang = st.context.cookies.get("losverfahren_lang")
+    except Exception:
+        _cookie_lang = None
+    if _cookie_lang in LANGUAGES:
+        st.session_state["lang"] = _cookie_lang
+    else:
+        st.session_state["lang"] = detect_browser_lang(DEFAULT_LANG)
 
 st.set_page_config(page_title=t("page.title"), layout="wide")
 st.title(t("page.heading"))
 st.caption(t("page.caption"))
+
+# Make the sidebar collapse/expand control easier to spot on small touch
+# screens — the default arrow is tiny and easy to miss when the sidebar is
+# closed (which is Streamlit's default on mobile). We only restyle the
+# "expand" button that appears when the sidebar is collapsed, so the desktop
+# UI with the sidebar open is unchanged. The test-id below is the one used
+# by Streamlit ≥1.36; older snake-case names (``stSidebarCollapsedControl``)
+# are kept as a defensive fallback.
+st.markdown(
+    f"""
+    <style>
+    @media (max-width: 768px) {{
+      [data-testid="stExpandSidebarButton"],
+      [data-testid="stSidebarCollapsedControl"] {{
+        background: var(--primary-color, #ff4b4b) !important;
+        border-radius: 0 10px 10px 0 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+        padding: 0.55rem 0.7rem !important;
+        top: 0.6rem !important;
+        left: 0 !important;
+        z-index: 999999 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0.35rem !important;
+        opacity: 1 !important;
+      }}
+      [data-testid="stExpandSidebarButton"] svg,
+      [data-testid="stSidebarCollapsedControl"] svg {{
+        color: white !important;
+        fill: white !important;
+        width: 1.8rem !important;
+        height: 1.8rem !important;
+      }}
+      [data-testid="stExpandSidebarButton"]::after,
+      [data-testid="stSidebarCollapsedControl"]::after {{
+        content: "{t("sidebar.menu_label")}";
+        color: white;
+        font-weight: 600;
+        font-size: 0.95rem;
+        line-height: 1;
+      }}
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 
@@ -122,15 +185,61 @@ def _load_population_any(path: Path):
 
 
 # ---------------------------------------------------------------- sidebar
+def _on_lang_change() -> None:
+    # Flagged so the cookie writer below only fires after an *explicit*
+    # user action, never for passive visitors.
+    st.session_state["lang_user_set"] = True
+
 with st.sidebar:
     _lang_codes = list(LANGUAGES.keys())
+    # No ``index=`` here: Streamlit forbids it when the key already lives in
+    # session_state. The widget reads its value from ``session_state['lang']``
+    # on every rerun.
     st.selectbox(
         t("sidebar.lang"),
         _lang_codes,
-        index=_lang_codes.index(st.session_state.get("lang", DEFAULT_LANG)),
         format_func=lambda c: LANGUAGES[c],
         key="lang",
+        on_change=_on_lang_change,
     )
+
+# Persist the current language as a cookie — but *only* after the user has
+# explicitly picked one from the selectbox. Visitors who never interact with
+# the language widget leave no cookie at all, which keeps this under the
+# "strictly necessary / functional" carve-out of the ePrivacy Directive
+# (no consent banner required):
+#   * cookie is set only as the direct result of an explicit user action,
+#   * its value is just the language code ("de" / "en") — no identifier,
+#     no tracking, no personal data,
+#   * first-party only (``SameSite=Lax``), HTTPS-only (``Secure``),
+#   * 180-day lifetime — long enough to be useful, short enough to feel
+#     proportionate.
+# The cookie is written from a same-origin iframe (``components.html``),
+# which shares its cookie jar with the parent page. Scripts inserted via
+# ``st.html`` / ``st.markdown`` are stripped by Streamlit's React renderer,
+# so ``components.html`` is required to actually execute the snippet.
+if st.session_state.get("lang_user_set"):
+    _lang_now = st.session_state["lang"]
+    components.html(
+        f"""
+<script>
+(function() {{
+  try {{
+    const doc = (window.parent && window.parent.document) || document;
+    const isSecure = (window.parent || window).location.protocol === 'https:';
+    const value = {json.dumps(_lang_now)};
+    doc.cookie = 'losverfahren_lang=' + encodeURIComponent(value)
+               + '; path=/; max-age=15552000; samesite=lax'
+               + (isSecure ? '; secure' : '');
+  }} catch (e) {{ /* cross-origin or storage blocked; degrade gracefully */ }}
+}})();
+</script>
+""",
+        height=0,
+        width=0,
+    )
+
+with st.sidebar:
 
     st.header(t("sidebar.h_inputs"))
 

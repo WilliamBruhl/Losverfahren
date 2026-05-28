@@ -27,6 +27,32 @@ LANGUAGES: dict[str, str] = {"de": "Deutsch", "en": "English"}
 DEFAULT_LANG = "de"
 
 
+def detect_browser_lang(default: str = DEFAULT_LANG) -> str:
+    """Pick a supported language from the browser's ``Accept-Language`` header.
+
+    Returns ``default`` if no header is reachable (older Streamlit, or running
+    headless in tests) or if the preferred locale is German. Otherwise returns
+    ``"en"`` — we only support de/en, so any non-German preference maps to
+    English. The header is parsed leniently: we look at the first tag only
+    and compare its primary subtag case-insensitively.
+    """
+    if st is None:
+        return default
+    try:
+        header = st.context.headers.get("Accept-Language", "")  # type: ignore[attr-defined]
+    except Exception:
+        return default
+    if not header:
+        return default
+    first = header.split(",", 1)[0].strip().lower()
+    primary = first.split("-", 1)[0].split(";", 1)[0]
+    if primary == "de":
+        return "de"
+    if primary in LANGUAGES:
+        return primary
+    return "en"
+
+
 TRANSLATIONS: dict[str, dict[str, str]] = {
     "de": {
         # --- page / chrome ---
@@ -39,6 +65,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         # --- sidebar: language ---
         "sidebar.lang": "Sprache / Language",
+        "sidebar.menu_label": "Menü",
         # --- data format expander ---
         "fmt.title": "Datenformat (Spalten und Beispiel-Zeilen)",
         "fmt.body": (
@@ -413,6 +440,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         # --- sidebar: language ---
         "sidebar.lang": "Sprache / Language",
+        "sidebar.menu_label": "Menu",
         # --- data format expander ---
         "fmt.title": "Data format (columns and example rows)",
         "fmt.body": (
