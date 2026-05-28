@@ -28,3 +28,6 @@ env/
 03-gui-tool/result.json
 03-gui-tool/runs/
 02-simple-excel-improvements/PBD_Losung-Patched.xlsx
+
+*.xlsx
+*.pptx

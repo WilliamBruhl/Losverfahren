@@ -3,10 +3,7 @@
 This folder holds the artefacts that describe the current procedure, exactly as
 they were provided:
 
-| File | What it is |
-|---|---|
-| [PBD_Losung-Template.xlsx](PBD_Losung-Template.xlsx) | Excel workbook implementing the manual draw: candidate pool, population structure, criteria, allocation, draw |
-| [ToS_Slides2_CNiessen.pptx](ToS_Slides2_CNiessen.pptx) | Slide deck (C. Niessen, Parlement de Wallonie, 27 April 2023) explaining the two‑step procedure and pointing at the Flanigan et al. (2021) algorithm |
+The actual workbook is not included in the public repo.
 
 The workbook is a thoughtful manual implementation of the procedure described
 in the slides. The notes below are written from a software‑engineering point
