@@ -37,6 +37,7 @@ from losverfahren.io_excel import (  # noqa: E402
     read_population_marginals,
     write_result_workbook,
 )
+from losverfahren.i18n import LANGUAGES, DEFAULT_LANG, t, join_codes  # noqa: E402
 from losverfahren.manifest import build_manifest, manifest_audit_rows  # noqa: E402
 from losverfahren.quotas import Quota, default_joint_quotas, default_quotas  # noqa: E402
 from losverfahren.selection import _candidate_in_quota, select_panel  # noqa: E402
@@ -88,61 +89,16 @@ def _discover_examples() -> dict[str, Path]:
                 out[pretty.get(sub.name, sub.name)] = sub
     return out
 
-st.set_page_config(page_title="Losverfahren — Bürgerpanel", layout="wide")
-st.title("Losverfahren — geschichtete Zufallsauswahl")
-st.caption(
-    "Prototyp: Maximin-LP + Quoten-konformes Sampling. "
-    "Inputs sind editierbare CSVs; jede Anpassung der Bevölkerungs-Daten "
-    "und jede Quoten-Relaxation wird im Audit dokumentiert."
-)
+# Language must be initialised *before* set_page_config so the page title is
+# rendered in the right language on first paint. The selectbox below writes
+# back into the same session_state key, triggering a normal Streamlit rerun.
+if "lang" not in st.session_state:
+    st.session_state["lang"] = DEFAULT_LANG
 
-with st.expander("Datenformat (Spalten und Beispiel-Zeilen)", expanded=False):
-    st.markdown(
-        "Drei CSV-Dateien werden unterstützt — alle UTF-8, Komma-getrennt, "
-        "erste Zeile ist die Kopfzeile. Excel-Templates (`.xlsx`) im alten "
-        "PBD-Format werden weiterhin akzeptiert.\n\n"
-        "### Flexible Schemata\n"
-        "Die Merkmale (Geschlecht, Alter, Kanton, Beruf, …) sind **nicht "
-        "fest verdrahtet**: du kannst beliebige Spalten in `candidates.csv` "
-        "verwenden, solange die gleichen Namen auch in `population.csv` als "
-        "`feature`-Werte auftauchen. Sprache und Spaltenzahl sind frei.\n\n"
-        "Auch die Spalten-Kopfzeile selbst toleriert Synonyme — z.B. "
-        "`Anzahl` statt `count`, `Anteil` statt `share`, `Merkmal` statt "
-        "`feature`, `Wert` statt `value`, `Bemerkung` statt `note`, "
-        "`Nummer` statt `ID` (Liste nicht abschließend).\n\n"
-        "**1 · `candidates.csv` (Pflicht)** — eine Zeile pro Person.\n\n"
-        "```\n"
-        "ID,Geschlecht,Alterskategorie,Kanton,Ausbildung\n"
-        "K001,Mann,36-55,Nord,AbiturMeister\n"
-        "K002,Frau,16-35,Süd,DualBachelor\n"
-        "```\n"
-        "Jede Spalte außer `ID` ist ein Stratifizierungs-Merkmal. Zusätzliche "
-        "deskriptive Spalten (z.B. `Email`) werden mitgeführt, aber nur "
-        "für Quoten verwendet, wenn sie auch in `population.csv` vorkommen.\n\n"
-        "**2 · `population.csv` (Pflicht, Marginalen)** — eine Zeile pro "
-        "Merkmals-Ausprägung. Bevorzugt mit Spalte `count` (Personenzahl); "
-        "`share` (Anteil 0–1) wird ebenfalls akzeptiert. `note` ist frei.\n\n"
-        "```\n"
-        "feature,value,count,note\n"
-        "Geschlecht,Mann,31982,\n"
-        "Geschlecht,Frau,32640,\n"
-        "Alterskategorie,16-35,18223,Stand 2024\n"
-        "```\n\n"
-        "**3 · `population_joint.csv` (optional, gemeinsame Verteilung)** — "
-        "eine Zeile pro Kombination. Beliebig viele Dimensions-Spalten plus "
-        "`count` (oder `share`).\n\n"
-        "```\n"
-        "Geschlecht,Alterskategorie,Kanton,count\n"
-        "Mann,16-35,Nord,5612\n"
-        "Frau,56+,Süd,4933\n"
-        "```\n\n"
-        "**Brauche ich Datei 3?** Nein — die Marginalen aus Datei 2 reichen "
-        "für eine korrekte Auslosung. Die Joint-Datei sorgt dafür, dass auch "
-        "die *Kombinationen* (z.B. „junge Männer im Norden“) im Panel "
-        "realistisch vertreten sind. Bei kleinem Kandidatenpool kann sie "
-        "die Auslosung verschärfen; das Tool fällt dann automatisch auf die "
-        "Marginalen zurück und vermerkt das."
-    )
+st.set_page_config(page_title=t("page.title"), layout="wide")
+st.title(t("page.heading"))
+st.caption(t("page.caption"))
+
 
 
 # ---------------------------------------------------------------- helpers
@@ -167,38 +123,41 @@ def _load_population_any(path: Path):
 
 # ---------------------------------------------------------------- sidebar
 with st.sidebar:
-    st.header("1 · Eingaben")
+    _lang_codes = list(LANGUAGES.keys())
+    st.selectbox(
+        t("sidebar.lang"),
+        _lang_codes,
+        index=_lang_codes.index(st.session_state.get("lang", DEFAULT_LANG)),
+        format_func=lambda c: LANGUAGES[c],
+        key="lang",
+    )
 
+    st.header(t("sidebar.h_inputs"))
+
+    _source_examples = t("sidebar.source.examples")
+    _source_upload = t("sidebar.source.upload")
     source = st.radio(
-        "Quelle",
-        ["Beispiel-Daten verwenden", "Eigene Dateien hochladen"],
+        t("sidebar.source"),
+        [_source_examples, _source_upload],
         index=0,
-        help=(
-            "Beispiel-Daten: bündelte CSVs aus dem mitgelieferten "
-            "PBD-Template. Eigene Dateien: zwei (oder drei) CSVs "
-            "im selben Format hochladen."
-        ),
+        help=t("sidebar.source.help"),
     )
 
     cand_path: Path | None = None
     pop_path: Path | None = None
     joint_path: Path | None = None
 
-    if source == "Beispiel-Daten verwenden":
+    if source == _source_examples:
         examples = _discover_examples()
         if not examples:
-            st.error("Keine Beispiel-Datensätze gefunden.")
+            st.error(t("sidebar.example.none"))
             st.stop()
         labels = list(examples.keys())
         choice = st.selectbox(
-            "Beispiel-Datensatz",
+            t("sidebar.example.label"),
             labels,
             index=0,
-            help=(
-                "Drei kuratierte Datensätze plus die PBD-Vorlage. Jeder "
-                "demonstriert ein anderes Schema/eine andere Sprache — "
-                "die Tool-Logik passt sich automatisch an."
-            ),
+            help=t("sidebar.example.help"),
         )
         chosen_dir = examples[choice]
         cand_path = chosen_dir / "candidates.csv"
@@ -206,57 +165,47 @@ with st.sidebar:
         joint_candidate = chosen_dir / "population_joint.csv"
         joint_path = joint_candidate if joint_candidate.exists() else None
         if not cand_path.exists():
-            st.error(f"Beispiel-Daten nicht gefunden unter {chosen_dir}")
+            st.error(t("sidebar.example.missing").format(path=chosen_dir))
             st.stop()
         readme = chosen_dir / "README.md"
         if readme.exists():
-            with st.expander("Datensatz-Beschreibung", expanded=False):
+            with st.expander(t("sidebar.example.readme"), expanded=False):
                 st.markdown(readme.read_text(encoding="utf-8"))
-        joint_note = "" if joint_path is None else " + Joint-Verteilung"
-        st.success(f"Geladen: **{choice}**{joint_note}")
+        joint_note = "" if joint_path is None else t("sidebar.example.joint_note")
+        st.success(t("sidebar.example.loaded").format(
+            choice=choice, joint_note=joint_note))
     else:
         cand_up = st.file_uploader(
-            "Kandidatenliste (.csv oder .xlsx)", type=["csv", "xlsx"], key="cand"
+            t("sidebar.upload.cand"), type=["csv", "xlsx"], key="cand"
         )
         pop_up = st.file_uploader(
-            "Bevölkerungsstruktur — Marginalen (.csv oder .xlsx)",
+            t("sidebar.upload.pop"),
             type=["csv", "xlsx"], key="pop"
         )
         joint_up = st.file_uploader(
-            "Bevölkerungsstruktur — Joint-Verteilung (optional, .csv)",
+            t("sidebar.upload.joint"),
             type=["csv"], key="joint",
-            help=(
-                "Optional. Eine zusätzliche CSV mit der gemeinsamen Verteilung "
-                "mehrerer Merkmale (z.B. Geschlecht × Alterskategorie × "
-                "Kanton). Liefert reichere Information als die Marginalen "
-                "alleine — wird automatisch zugeschaltet, sobald hochgeladen. "
-                "Format siehe »Datenformat« im Hauptbereich."
-            ),
+            help=t("sidebar.upload.joint.help"),
         )
         if cand_up is None or pop_up is None:
-            st.info("Mindestens Kandidaten und Marginalen hochladen, um fortzufahren.")
+            st.info(t("sidebar.upload.need_more"))
             st.stop()
         cand_path = _save_upload(cand_up, cand_up.name)
         pop_path = _save_upload(pop_up, pop_up.name)
         joint_path = _save_upload(joint_up, joint_up.name) if joint_up else None
 
     use_joint = st.checkbox(
-        "Joint-Quoten zusätzlich erzwingen",
+        t("sidebar.use_joint"),
         value=joint_path is not None,
         disabled=joint_path is None,
-        help=(
-            "Wenn aktiviert, werden zusätzlich Quoten für jede Zelle der "
-            "joint Verteilung an die LP übergeben. Sonst werden nur die "
-            "Marginalen verwendet. Wird automatisch aktiviert, sobald eine "
-            "Joint-CSV vorhanden ist."
-        ),
+        help=t("sidebar.use_joint.help"),
     )
 
-    st.header("2 · Parameter")
-    panel_size = st.number_input("Panelgröße", 5, 200, 30, 1)
-    n_subs = st.number_input("Ersatzpersonen", 0, 200, 30, 1)
-    seed = st.number_input("Seed", 0, 2**31 - 1, 20260527, 1)
-    run = st.button("Auslosung starten", type="primary")
+    st.header(t("sidebar.h_params"))
+    panel_size = st.number_input(t("sidebar.panel_size"), 5, 200, 30, 1)
+    n_subs = st.number_input(t("sidebar.n_subs"), 0, 200, 30, 1)
+    seed = st.number_input(t("sidebar.seed"), 0, 2**31 - 1, 20260527, 1)
+    run = st.button(t("sidebar.run"), type="primary")
 
 
 # ---------------------------------------------------------------- data load
@@ -267,22 +216,12 @@ def _fail(msg: str, exc: Exception) -> None:
 try:
     candidates, cand_warnings = _load_candidates_any(cand_path)
 except Exception as e:  # noqa: BLE001
-    _fail(
-        "Kandidatenliste konnte nicht gelesen werden. Mindestens eine Spalte "
-        "`ID` (oder ein Synonym wie `Nummer`, `Code`) plus eine "
-        "Stratifizierungs-Spalte sind erforderlich.",
-        e,
-    )
+    _fail(t("load.cand_fail"), e)
 
 try:
     population_loaded, pop_warnings = _load_population_any(pop_path)
 except Exception as e:  # noqa: BLE001
-    _fail(
-        "Bevölkerungs-Marginalen konnten nicht gelesen werden. Erwartet wird "
-        "eine CSV mit Spalten `feature, value, count` (oder `share`); "
-        "optional `note`.",
-        e,
-    )
+    _fail(t("load.pop_fail"), e)
 
 # Read the same population file as a raw DataFrame for the editor — this
 # preserves the admin-friendly count and note columns even though the solver
@@ -316,7 +255,7 @@ def _read_pop_raw(path: Path) -> pd.DataFrame:
 try:
     raw_pop_df = _read_pop_raw(pop_path)
 except Exception as e:  # noqa: BLE001
-    _fail("Bevölkerungs-CSV ließ sich nicht in eine Tabelle laden.", e)
+    _fail(t("load.pop_table_fail"), e)
 
 joint_loaded: list[tuple[dict[str, str], float]] = []
 joint_warnings: list[str] = []
@@ -338,15 +277,12 @@ if joint_path is not None:
         else:
             raw_joint_df = None
     except Exception as e:  # noqa: BLE001
-        st.warning(
-            "Joint-Bevölkerungs-CSV konnte nicht gelesen werden — die "
-            f"Auslosung läuft nur mit den Marginalen weiter. Details: "
-            f"`{type(e).__name__}: {e}`"
-        )
+        st.warning(t("load.joint_fail").format(
+            err=f"{type(e).__name__}: {e}"))
         joint_path = None
         joint_loaded = []
 
-st.subheader("Kandidaten (editierbar)")
+st.subheader(t("cand.h"))
 
 # Discover the active schema from the data on disk.
 cand_attr_cols: list[str] = []
@@ -361,33 +297,21 @@ active_features = [f for f in cand_attr_cols if f in pop_features]
 metadata_only = [f for f in cand_attr_cols if f not in pop_features]
 missing_in_candidates = [f for f in pop_features if f not in cand_attr_cols]
 
-with st.expander("Erkanntes Schema", expanded=False):
-    st.markdown(
-        f"- **Aktive Merkmale (Quoten)**: "
-        + (", ".join(f"`{x}`" for x in active_features) or "_keine_")
-    )
+with st.expander(t("cand.schema_expander"), expanded=False):
+    st.markdown(t("cand.schema.active").format(
+        features=join_codes(active_features) or t("cand.schema.none")))
     if metadata_only:
-        st.markdown(
-            "- **Nur deskriptiv** (in Kandidaten, nicht in Bevölkerung): "
-            + ", ".join(f"`{x}`" for x in metadata_only)
-        )
+        st.markdown(t("cand.schema.descriptive").format(
+            features=join_codes(metadata_only)))
     if missing_in_candidates:
-        st.warning(
-            "In `population.csv` definierte Merkmale, die in `candidates.csv` "
-            "fehlen — sie können nicht als Quote benutzt werden: "
-            + ", ".join(f"`{x}`" for x in missing_in_candidates)
-        )
+        st.warning(t("cand.schema.missing").format(
+            features=join_codes(missing_in_candidates)))
     if cand_warnings:
         for w in cand_warnings:
             st.info(w)
 
 if not active_features:
-    st.error(
-        "Keine überlappenden Merkmale zwischen `candidates.csv` und "
-        "`population.csv` gefunden. Bitte sicherstellen, dass beide Dateien "
-        "die gleichen Spalten-/`feature`-Namen verwenden (groß-/kleinschrift- "
-        "und akzentempfindlich)."
-    )
+    st.error(t("cand.no_overlap"))
     st.stop()
 
 # Build the candidate DataFrame with per-feature dropdown options.
@@ -410,21 +334,19 @@ for feat in active_features:
     feature_options[feat] = sorted(opts)
 
 cand_col_config: dict = {"ID": st.column_config.TextColumn(
-    "ID", help="Eindeutige Kandidaten-Kennung.", required=True)}
+    "ID", help=t("cand.col.id_help"), required=True)}
 for feat in cand_attr_cols:
     if feat in feature_options:
         cand_col_config[feat] = st.column_config.SelectboxColumn(
             feat, options=feature_options[feat],
-            help=(f"Werte stammen aus `population.csv` / bereits vorhandenen "
-                  f"Einträgen. Neue Ausprägungen zuerst in der "
-                  f"Bevölkerungs-Tabelle anlegen."),
+            help=t("cand.col.feat_help"),
         )
     else:
         cand_col_config[feat] = st.column_config.TextColumn(
-            feat, help="Nur deskriptiv — wird für Quoten nicht verwendet."
+            feat, help=t("cand.col.desc_help")
         )
 
-st.write(f"{len(candidates)} Kandidaten geladen.")
+st.write(t("cand.count").format(n=len(candidates)))
 edited_cand_df = st.data_editor(
     raw_cand_df, width='stretch', height=320, num_rows="dynamic",
     key="cand_editor", column_config=cand_col_config,
@@ -446,19 +368,8 @@ for _, row in edited_cand_df.iterrows():
 
 
 # ---------------------------------------------------------------- population editor
-st.subheader("Bevölkerungsstruktur (editierbar)")
-st.markdown(
-    "**Eingabeformat:** Spalte `count` enthält die Anzahl Personen pro "
-    "Merkmalsausprägung — genau so wie sie aus den offiziellen "
-    "Bevölkerungs-Tabellen kommt. Sie können die Zahlen direkt in der "
-    "Tabelle anpassen, z.B. um eine neue Statistik einzuspielen.\n\n"
-    "Die Spalte `share` (Anteil) wird **automatisch** aus den `count`-Werten "
-    "abgeleitet und pro Merkmal auf 1 normiert. `share` ist nur informativ — "
-    "der Solver verwendet immer die abgeleiteten Anteile.\n\n"
-    "Die Spalte `note` ist für interne Anmerkungen gedacht "
-    "(z.B. *„Stand 2022, Update ausstehend“*). Sie wirkt sich nicht auf das "
-    "Ergebnis aus, wird aber im Audit-Eintrag mitgeführt."
-)
+st.subheader(t("pop.h"))
+st.markdown(t("pop.body"))
 if pop_warnings:
     for w in pop_warnings:
         st.warning(w)
@@ -470,23 +381,19 @@ edited_pop_df = st.data_editor(
     key="pop_editor",
     column_config={
         "feature": st.column_config.SelectboxColumn(
-            "feature (Merkmal)",
+            t("pop.col.feature"),
             options=sorted(set(raw_pop_df["feature"].dropna().astype(str)) | set(active_features)),
-            help=("Dropdown mit bereits vorhandenen Merkmalen. Ein neues "
-                  "Merkmal anlegen: neue Zeile, Feldname in der Spalte "
-                  "`feature` direkt eintippen (das ist nur über den "
-                  "Stiftknopf möglich, sobald die Zeile aktiv ist)."),
+            help=t("pop.col.feature_help"),
         ),
         "value": st.column_config.TextColumn(
-            "value (Ausprägung)",
-            help="Frei wählbar; muss innerhalb eines Merkmals eindeutig sein."),
+            t("pop.col.value"), help=t("pop.col.value_help")),
         "count": st.column_config.NumberColumn(
-            "count (Anzahl Personen)", min_value=0, step=1, format="%d",
-            help="Rohzahl aus der Bevölkerungs-Statistik."),
+            t("pop.col.count"), min_value=0, step=1, format="%d",
+            help=t("pop.col.count_help")),
         "share": st.column_config.NumberColumn(
-            "share (abgeleitet)", format="%.4f",
-            help="Wird automatisch berechnet — keine Eingabe nötig."),
-        "note": st.column_config.TextColumn("note (frei)"),
+            t("pop.col.share"), format="%.4f",
+            help=t("pop.col.share_help")),
+        "note": st.column_config.TextColumn(t("pop.col.note")),
     },
 )
 
@@ -511,11 +418,12 @@ for feat, d in population.items():
             d[k] /= total
 
 # Live preview of derived shares for transparency
-with st.expander("Abgeleitete Anteile (Kontrolle)", expanded=False):
+with st.expander(t("pop.derived_expander"), expanded=False):
     rows = []
     for feat, d in population.items():
         for v, s in d.items():
-            rows.append({"feature": feat, "value": v, "share (derived)": round(s, 4)})
+            rows.append({"feature": feat, "value": v,
+                         t("pop.derived.col_share"): round(s, 4)})
     st.dataframe(pd.DataFrame(rows), width='stretch')
 
 # ------------------------------------------------ consistency pre-computation
@@ -540,8 +448,8 @@ _median_total = (sorted(_totals_list)[len(_totals_list) // 2]
 consistency_rows: list[dict] = []
 warn_features: list[str] = []
 err_features: list[str] = []
-for feat, t in raw_totals.items():
-    dev_pct = ((t - _median_total) / _median_total * 100) if _median_total > 0 else 0.0
+for feat, t_ in raw_totals.items():
+    dev_pct = ((t_ - _median_total) / _median_total * 100) if _median_total > 0 else 0.0
     if abs(dev_pct) <= 2:
         flag = "✓"
     elif abs(dev_pct) <= 10:
@@ -549,10 +457,10 @@ for feat, t in raw_totals.items():
     else:
         flag = "✗"; err_features.append(feat)
     consistency_rows.append({
-        "feature": feat,
-        "Σ count": int(round(t)),
-        "Δ vs. Median (%)": round(dev_pct, 2),
-        "Status": flag,
+        t("expert.col.feature"): feat,
+        t("expert.col.sum_count"): int(round(t_)),
+        t("expert.col.delta_median"): round(dev_pct, 2),
+        t("expert.col.status"): flag,
     })
 
 joint_consistency_rows: list[dict] = []
@@ -574,41 +482,26 @@ if joint_loaded and raw_joint_df is not None and "count" in raw_joint_df.columns
         else:
             flag = "✗"; joint_err.append(dim)
         joint_consistency_rows.append({
-            "Joint deckt": dim,
-            "Σ Joint count": int(round(_joint_total)),
-            "Σ Marginal count": int(round(marg)),
-            "Δ (%)": round(dev, 2),
-            "Status": flag,
+            t("expert.col.joint_covers"): dim,
+            t("expert.col.sum_joint"): int(round(_joint_total)),
+            t("expert.col.sum_marg"): int(round(marg)),
+            t("expert.col.delta_pct"): round(dev, 2),
+            t("expert.col.status"): flag,
         })
 
 # Surface the warning at the top level so it is visible without opening
 # the expander.
 if err_features:
-    st.error(
-        "**Inkonsistente Bevölkerungs-Summen**: "
-        + ", ".join(f"`{f}`" for f in err_features)
-        + f" weichen > 10 % vom Median ({int(round(_median_total)):,} Personen) ab. "
-          "Das deutet meist auf unterschiedliche Stichjahre, abweichende "
-          "Altersuntergrenzen oder einen Tippfehler hin. Das Tool rechnet "
-          "trotzdem weiter (jedes Merkmal wird separat auf Summe 1 normalisiert), "
-          "aber das Resultat repräsentiert dann eine *Mischpopulation*. "
-          "Details unter »Statistik / Expertenmodus« weiter unten."
-    )
+    st.error(t("warn.consistency.err").format(
+        features=join_codes(err_features),
+        median=f"{int(round(_median_total)):,}",
+    ))
 elif warn_features:
-    st.warning(
-        "**Bevölkerungs-Summen leicht inkonsistent**: "
-        + ", ".join(f"`{f}`" for f in warn_features)
-        + " weichen 2 – 10 % vom Median ab. Details unter »Statistik / "
-          "Expertenmodus«."
-    )
+    st.warning(t("warn.consistency.warn").format(
+        features=join_codes(warn_features)))
 if joint_err:
-    st.error(
-        "**Joint-Verteilung passt nicht zu den Marginalen**: Summe der "
-        f"Joint-Counts weicht > 10 % von den Marginal-Summen für "
-        + ", ".join(f"`{d}`" for d in joint_err)
-        + " ab. Wahrscheinlich stammen Joint- und Marginal-Daten aus "
-          "unterschiedlichen Quellen. Bitte prüfen."
-    )
+    st.error(t("warn.joint_mismatch").format(
+        features=join_codes(joint_err)))
 
 # ----- candidate ↔ population drift (per-row, surfaced at top level) -----
 _n_total = len(candidates) or 1
@@ -628,88 +521,65 @@ for _feat in active_features:
         elif _delta_pp > 5:
             drift_warn.append(f"`{_feat}`={_v}")
 if drift_err:
-    st.error(
-        "**Starke Pool-Verzerrung gegenüber der Bevölkerung** "
-        f"(> 15 Prozentpunkte) bei: {', '.join(drift_err[:8])}"
-        + (f" … (+{len(drift_err)-8} weitere)" if len(drift_err) > 8 else "")
-        + ". Der Solver kann das im Rahmen der Quoten ausgleichen, aber bei "
-          "kleinem Pool wird er einige Quoten relaxieren müssen. Details und "
-          "Farbkennzeichnung unter »Statistik / Expertenmodus« weiter unten."
-    )
+    _more = (t("warn.drift_strong.more").format(n=len(drift_err)-8)
+             if len(drift_err) > 8 else "")
+    st.error(t("warn.drift_strong").format(
+        items=', '.join(drift_err[:8]), more=_more))
 elif drift_warn:
-    st.warning(
-        f"**Pool weicht spürbar von der Bevölkerung ab** "
-        f"(5 – 15 pp bei {len(drift_warn)} Ausprägung(en)). Details unter "
-        "»Statistik / Expertenmodus«."
-    )
+    st.warning(t("warn.drift_mild").format(n=len(drift_warn)))
 
 # ----------------------------------------------------------- expert statistics
-with st.expander("Statistik / Expertenmodus", expanded=False):
-    st.markdown(
-        "Diagnose-Informationen über Kandidatenpool und Bevölkerungs-Vergleich "
-        "— hilfreich, um *vor* der Auslosung systematische Verzerrungen zu "
-        "erkennen."
-    )
+with st.expander(t("expert.expander"), expanded=False):
+    st.markdown(t("expert.intro"))
 
     n_cand = len(candidates)
     n_feat = len(active_features)
     n_desc = len(metadata_only)
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Kandidaten", n_cand)
-    col2.metric("Aktive Merkmale", n_feat)
-    col3.metric("Nur deskriptiv", n_desc)
-    col4.metric("Panel-/Pool-Quote", f"{int(panel_size)/n_cand:.1%}" if n_cand else "—")
+    col1.metric(t("expert.kpi.cands"), n_cand)
+    col2.metric(t("expert.kpi.active"), n_feat)
+    col3.metric(t("expert.kpi.descriptive"), n_desc)
+    col4.metric(t("expert.kpi.ratio"),
+                f"{int(panel_size)/n_cand:.1%}" if n_cand else "—")
 
     # ---------- consistency check across feature totals ----------------
-    st.markdown("**Konsistenz-Check**")
-    st.caption(
-        "Jedes Merkmal wird *intern unabhängig* auf Summe 1 normalisiert "
-        "(`share = count / Σ count` pro Merkmal). Dadurch funktioniert das "
-        "Tool auch, wenn die Marginalen aus unterschiedlichen Quellen / "
-        "Stichjahren stammen — verbirgt aber Inkonsistenzen. Diese Tabelle "
-        "zeigt die Roh-Summen *vor* der Normalisierung."
-    )
+    st.markdown(t("expert.consistency.h"))
+    st.caption(t("expert.consistency.caption"))
     if consistency_rows:
         st.dataframe(pd.DataFrame(consistency_rows),
                      width='stretch', hide_index=True)
-        st.caption(
-            "Median-Gesamtbevölkerung über alle Merkmale: "
-            f"**{int(round(_median_total)):,}**. ".replace(",", "'")
-            + "Toleranz: ±2 % ✓, ±10 % ⚠, darüber ✗."
-        )
+        _median_str = f"{int(round(_median_total)):,}".replace(",", "'")
+        st.caption(t("expert.consistency.median").format(median=_median_str))
     else:
-        st.info(
-            "Keine `count`-Werte vorhanden — Konsistenz-Check übersprungen "
-            "(es werden direkt die `share`-Werte verwendet)."
-        )
+        st.info(t("expert.consistency.empty"))
 
     if joint_consistency_rows:
-        st.caption("**Joint ↔ Marginalen** (Summen sollten übereinstimmen)")
+        st.caption(t("expert.joint_marg.caption"))
         st.dataframe(pd.DataFrame(joint_consistency_rows),
                      width='stretch', hide_index=True)
 
     # Per-feature comparison: candidate distribution vs. population.
-    st.markdown("**Verteilungs-Vergleich pro Merkmal** "
-                "(Kandidaten-Anteil vs. Bevölkerungs-Anteil)")
-    st.caption(
-        "Flagge: **✓** ≤ 5 pp Abweichung, **⚠** 5 – 15 pp (gelb hinterlegt), "
-        "**✗** > 15 pp (rot hinterlegt) — gleiche Farb-Konvention wie bei "
-        "der Quoten-Realisierung weiter unten."
-    )
+    st.markdown(t("expert.compare.h"))
+    st.caption(t("expert.compare.caption"))
+
+    _col_delta_pp = t("expert.compare.col.delta_pp")
+    _col_share_cand = t("expert.compare.col.share_cand")
+    _col_share_pop = t("expert.compare.col.share_pop")
+    _col_expected = t("expert.compare.col.expected")
 
     def _style_drift(df: pd.DataFrame):
         def row_style(row):
-            d = abs(float(row["Δ (pp)"]))
+            d = abs(float(row[_col_delta_pp]))
             if d > 15:
                 return ["background-color: #f8d7da"] * len(row)  # red
             if d > 5:
                 return ["background-color: #fff3cd"] * len(row)  # yellow
             return [""] * len(row)
         return df.style.apply(row_style, axis=1).format({
-            "Anteil_Kand.": "{:.4f}",
-            "Anteil_Bev.": "{:.4f}",
-            "Δ (pp)": "{:+.1f}",
-            "erwartet @ Panel": "{:.2f}",
+            _col_share_cand: "{:.4f}",
+            _col_share_pop: "{:.4f}",
+            _col_delta_pp: "{:+.1f}",
+            _col_expected: "{:.2f}",
         })
 
     for feat in active_features:
@@ -739,28 +609,23 @@ with st.expander("Statistik / Expertenmodus", expanded=False):
             else:
                 drift_flag = "✓"
             rows.append({
-                "value": v,
-                "n_Kand.": cn,
-                "Anteil_Kand.": round(cs, 4),
-                "Anteil_Bev.": round(ps, 4),
-                "Δ (pp)": round(delta_pp, 1),
-                "Drift": drift_flag,
-                "erwartet @ Panel": round(expected, 2),
-                "Pool-OK?": "✓" if cn >= min_needed else "⚠",
+                t("expert.compare.col.value"): v,
+                t("expert.compare.col.n_cand"): cn,
+                _col_share_cand: round(cs, 4),
+                _col_share_pop: round(ps, 4),
+                _col_delta_pp: round(delta_pp, 1),
+                t("expert.compare.col.drift"): drift_flag,
+                _col_expected: round(expected, 2),
+                t("expert.compare.col.pool_ok"): "✓" if cn >= min_needed else "⚠",
             })
         tvd = tvd / 2
-        st.markdown(
-            f"*`{feat}`* — Total Variation Distance "
-            f"$d_{{TV}} = \\tfrac12 \\sum |p_{{cand}} - p_{{pop}}|$ = "
-            f"**{tvd:.3f}**  "
-            f"(0 = perfekt repräsentativ, 1 = vollständig disjunkt)"
-        )
+        st.markdown(t("expert.compare.tvd").format(feat=feat, tvd=tvd))
         st.dataframe(_style_drift(pd.DataFrame(rows)), width='stretch',
                      hide_index=True)
 
     # Joint coverage: useful when a joint distribution is loaded.
     if joint_loaded:
-        st.markdown("**Joint-Zellen-Abdeckung**")
+        st.markdown(t("expert.joint.h"))
         joint_cells_total = len(joint_loaded)
         joint_cells_with_cands = 0
         empty_cells: list[tuple[str, int]] = []
@@ -775,22 +640,19 @@ with st.expander("Statistik / Expertenmodus", expanded=False):
             else:
                 empty_cells.append((label, int(round(weight * int(panel_size)))))
         c1, c2 = st.columns(2)
-        c1.metric("Zellen mit ≥1 Kandidaten",
+        c1.metric(t("expert.joint.cells_with"),
                   f"{joint_cells_with_cands} / {joint_cells_total}")
-        c2.metric("Abdeckungsquote",
+        c2.metric(t("expert.joint.coverage"),
                   f"{joint_cells_with_cands/joint_cells_total:.1%}"
                   if joint_cells_total else "—")
         if empty_cells:
-            st.warning(
-                f"{len(empty_cells)} Joint-Zellen haben **keinen** "
-                "passenden Kandidaten — diese können nur durch "
-                "Quoten-Relaxation oder Pool-Aufstockung berücksichtigt "
-                "werden."
-            )
-            with st.expander(f"Leere Zellen ({len(empty_cells)})", expanded=False):
+            st.warning(t("expert.joint.empty_warn").format(n=len(empty_cells)))
+            with st.expander(t("expert.joint.empty_expander").format(
+                    n=len(empty_cells)), expanded=False):
                 st.dataframe(
                     pd.DataFrame(empty_cells,
-                                 columns=["Zelle", "erwartet @ Panel"]),
+                                 columns=[t("expert.joint.col.cell"),
+                                          t("expert.joint.col.expected")]),
                     width='stretch', hide_index=True,
                 )
 
@@ -802,36 +664,23 @@ with st.expander("Statistik / Expertenmodus", expanded=False):
         )
         if n_in_pool < q.lo:
             risky.append({
-                "feature": q.feature, "value": q.value,
-                "Quote (min)": q.lo, "im Pool": n_in_pool,
-                "Defizit": q.lo - n_in_pool,
+                t("expert.col.feature"): q.feature,
+                t("expert.compare.col.value"): q.value,
+                t("expert.pool.col.quota_min"): q.lo,
+                t("expert.pool.col.in_pool"): n_in_pool,
+                t("expert.pool.col.deficit"): q.lo - n_in_pool,
             })
     if risky:
-        st.markdown("**Pool-Engpässe**")
-        st.error(
-            f"{len(risky)} Merkmals-Ausprägung(en) haben weniger Kandidaten "
-            "als die strikte Mindest-Quote verlangt. Der Solver wird hier "
-            "automatisch relaxieren (gelb markiert in der Ergebnis-Tabelle "
-            "weiter unten)."
-        )
+        st.markdown(t("expert.pool.h"))
+        st.error(t("expert.pool.err").format(n=len(risky)))
         st.dataframe(pd.DataFrame(risky), width='stretch', hide_index=True)
     else:
-        st.success(
-            "Alle Marginal-Quoten sind aus dem Pool heraus theoretisch "
-            "erfüllbar (keine sofortige Relaxation nötig)."
-        )
+        st.success(t("expert.pool.ok"))
 
 
 # ---------------------------------------------------------------- quotas preview
-st.subheader("Quoten (abgeleitet)")
-st.markdown(
-    "Für eine Panelgröße $k$ und einen Bevölkerungs-Anteil $\\pi$ wird das "
-    "Quoten-Intervall als $[\\lfloor k\\cdot\\pi \\rfloor,\\, \\lceil k\\cdot\\pi \\rceil]$ "
-    "gesetzt. Das ist immer ein Bereich der Länge 0 oder 1 — das hält den "
-    "Solver auch dann lösbar, wenn die Bevölkerungs-Anteile keine ganzen "
-    "Personen ergeben.\n\n"
-    "Anpassungen an der Bevölkerungs-Tabelle oben werden hier sofort sichtbar."
-)
+st.subheader(t("quotas.h"))
+st.markdown(t("quotas.body"))
 preview_q = default_quotas(population, int(panel_size))
 if use_joint and joint_loaded:
     preview_q = preview_q + default_joint_quotas(joint_loaded, int(panel_size))
@@ -844,21 +693,10 @@ st.dataframe(df_q, width='stretch')
 
 if joint_loaded:
     with st.expander(
-        f"Joint-Verteilung (Geschlecht×Alter×Kanton) — {len(joint_loaded)} Zellen",
+        t("quotas.joint_expander").format(n=len(joint_loaded)),
         expanded=False,
     ):
-        st.markdown(
-            "Diese Tabelle bildet die **gemeinsame** Verteilung von "
-            "Geschlecht × Alter × Kanton ab und kommt direkt aus dem "
-            "amtlichen Bevölkerungs-Cross-Tab. Wenn aktiviert (Checkbox links), "
-            "verlangt der Solver pro Zelle eine Mindest- und Höchstzahl im "
-            "Panel — das Ergebnis spiegelt damit die Bevölkerungs-Struktur "
-            "feiner wider als bei reiner Verwendung der Marginalen.\n\n"
-            "**Bei knappem Kandidatenpool kann das die Auslosung der "
-            "Ersatzpersonen unlösbar machen.** In dem Fall fällt das Tool "
-            "automatisch auf die Marginalen zurück und vermerkt das oben "
-            "in einer Warnbox."
-        )
+        st.markdown(t("quotas.joint_body"))
         if raw_joint_df is not None:
             # Suggest values per joint dimension from population/candidates.
             joint_dim_cols = [c for c in raw_joint_df.columns
@@ -871,13 +709,12 @@ if joint_loaded:
                 )
                 joint_col_config[dim] = st.column_config.SelectboxColumn(
                     dim, options=opts,
-                    help=("Auswahl aus `population.csv` plus bereits vorhandene "
-                          "Werte dieser Dimension."),
+                    help=t("quotas.joint.col_help"),
                 )
             joint_col_config["count"] = st.column_config.NumberColumn(
-                "count (Anzahl Personen)", min_value=0, step=1, format="%d")
+                t("pop.col.count"), min_value=0, step=1, format="%d")
             joint_col_config["share"] = st.column_config.NumberColumn(
-                "share (abgeleitet)", format="%.4f")
+                t("pop.col.share"), format="%.4f")
             edited_joint_df = st.data_editor(
                 raw_joint_df, width='stretch', num_rows="dynamic",
                 key="joint_editor", column_config=joint_col_config,
@@ -914,29 +751,23 @@ if not run:
 
 # ---------------------------------------------------------------- solve
 try:
-    with st.spinner("Mitgliederpanel wird ausgelost …"):
+    with st.spinner(t("solve.spinner_members")):
         quotas: list[Quota] = default_quotas(population, int(panel_size))
         if use_joint and joint_loaded:
             quotas = quotas + default_joint_quotas(joint_loaded, int(panel_size))
         members = select_panel(candidates, quotas, int(panel_size), seed=int(seed))
 except RuntimeError as e:
-    st.error(
-        "**Die Auslosung der Mitglieder ist nicht lösbar.** "
-        "Häufige Ursachen: Panelgröße größer als der Kandidatenpool, "
-        "Quoten verlangen mehr Personen einer Kategorie als verfügbar, "
-        "oder Joint-Verteilung zu fein für den Pool. "
-        f"\n\nDetails: `{e}`"
-    )
+    st.error(t("solve.unsolvable").format(err=e))
     st.stop()
 except Exception as e:  # noqa: BLE001
-    st.error(f"**Unerwarteter Fehler bei der Auslosung.**\n\n`{type(e).__name__}: {e}`")
+    st.error(t("solve.unexpected").format(err=f"{type(e).__name__}: {e}"))
     st.stop()
 
 substitutes = None
 sub_quotas: list[Quota] = []
 sub_joint_dropped = False
 if n_subs > 0:
-    with st.spinner("Ersatzpersonen werden ausgelost …"):
+    with st.spinner(t("solve.spinner_subs")):
         sub_quotas = default_quotas(population, int(n_subs))
         if use_joint and joint_loaded:
             sub_quotas_with_joint = sub_quotas + default_joint_quotas(
@@ -990,35 +821,31 @@ manifest = build_manifest(
 
 
 # ---------------------------------------------------------------- results
-st.subheader("3 · Ergebnis")
+st.subheader(t("result.h"))
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Mitglieder", len(members.panel))
-c2.metric("Ersatz", 0 if substitutes is None else len(substitutes.panel))
-c3.metric("Min p_i (Mitglieder)", f"{members.minimum_probability:.4f}")
-c4.metric("Run-Hash", manifest["run_hash"][:12] + "…")
+c1.metric(t("result.kpi.members"), len(members.panel))
+c2.metric(t("result.kpi.subs"), 0 if substitutes is None else len(substitutes.panel))
+c3.metric(t("result.kpi.minp"), f"{members.minimum_probability:.4f}")
+c4.metric(t("result.kpi.runhash"), manifest["run_hash"][:12] + "…")
 
 # Prominent relaxation warnings
 all_relax = list(members.relaxations) + (substitutes.relaxations if substitutes else [])
 if all_relax:
-    with st.expander(f"⚠ {len(all_relax)} Quoten-Anpassung(en) — bitte prüfen",
+    with st.expander(t("result.relax_expander").format(n=len(all_relax)),
                      expanded=True):
         if members.relaxations:
-            st.markdown("**Mitglieder:**")
+            st.markdown(t("result.relax.members"))
             for r in members.relaxations:
                 st.write("• " + r)
         if substitutes and substitutes.relaxations:
-            st.markdown("**Ersatz:**")
+            st.markdown(t("result.relax.subs"))
             for r in substitutes.relaxations:
                 st.write("• " + r)
 else:
-    st.success("Alle Quoten wurden ohne Anpassung erfüllt.")
+    st.success(t("result.no_relax"))
 
 if sub_joint_dropped:
-    st.warning(
-        "Für die Ersatzpersonen waren die Joint-Quoten nicht erfüllbar — "
-        "die Auslosung der Ersatzpersonen erfolgte nur mit den Marginalen. "
-        "Joint-Verteilung bleibt für die Mitglieder erzwungen."
-    )
+    st.warning(t("solve.sub_joint_dropped"))
 
 
 def _panel_table(r) -> pd.DataFrame:
@@ -1044,7 +871,8 @@ def _bounds_table(r, qs) -> pd.DataFrame:
 
 
 t_m, t_s, t_b, t_p, t_a = st.tabs(
-    ["Mitglieder", "Ersatz", "Quoten vs. Ist", "Wahrscheinlichkeiten", "Audit / Hashes"]
+    [t("result.tab.members"), t("result.tab.subs"), t("result.tab.bounds"),
+     t("result.tab.probs"), t("result.tab.audit")]
 )
 
 with t_m:
@@ -1052,20 +880,14 @@ with t_m:
 
 with t_s:
     if substitutes is None:
-        st.write("Keine Ersatzpersonen angefordert.")
+        st.write(t("result.subs.none"))
     else:
         st.dataframe(_panel_table(substitutes),
                      width='stretch', height=420)
 
 with t_b:
-    st.markdown("**Mitglieder — Quoten-Intervall vs. realisiert**")
-    st.caption(
-        "🟡 gelb hinterlegte Zeilen = die Standardgrenzen `lo_default` / "
-        "`hi_default` mussten relaxiert werden, damit der Solver lösbar bleibt "
-        "(z.B. weil der Kandidatenpool nicht genug Personen einer Kategorie "
-        "enthält). 🔴 rot = realisierte Anzahl außerhalb des effektiven "
-        "Intervalls (sollte praktisch nie vorkommen)."
-    )
+    st.markdown(t("result.bounds.members_h"))
+    st.caption(t("result.bounds.caption"))
 
     def _style_bounds(df: pd.DataFrame):
         def row_style(row):
@@ -1082,28 +904,29 @@ with t_b:
     st.dataframe(_style_bounds(_bounds_table(members, quotas)),
                  width='stretch')
     if substitutes is not None:
-        st.markdown("**Ersatz — Quoten-Intervall vs. realisiert**")
+        st.markdown(t("result.bounds.subs_h"))
         st.dataframe(_style_bounds(_bounds_table(substitutes, sub_quotas)),
                      width='stretch')
 
 with t_p:
     df_p = pd.DataFrame(sorted(members.probabilities.items()),
-                        columns=["ID", "p_member"])
+                        columns=[t("result.probs.col_id"), t("result.probs.col_p")])
     st.dataframe(df_p, width='stretch', height=420)
 
 with t_a:
-    st.markdown("**Run-Hash (SHA-256)**")
+    st.markdown(t("result.audit.runhash_h"))
     st.code(manifest["run_hash"])
-    st.markdown("**Einzel-Hashes**")
+    st.markdown(t("result.audit.parts_h"))
     st.json(manifest["hashes"])
-    st.markdown("**Audit-Zeilen**")
+    st.markdown(t("result.audit.rows_h"))
     st.dataframe(pd.DataFrame(manifest_audit_rows(manifest),
-                              columns=["Schlüssel", "Wert"]),
+                              columns=[t("result.audit.col_key"),
+                                       t("result.audit.col_val")]),
                  width='stretch', height=420)
 
 
 # ---------------------------------------------------------------- downloads
-st.subheader("4 · Download")
+st.subheader(t("dl.h"))
 out_tmp = Path(tempfile.mkdtemp())
 xlsx_path = out_tmp / "Losung-Ergebnis.xlsx"
 write_result_workbook(
@@ -1123,14 +946,14 @@ json_buf.write(json.dumps(manifest, ensure_ascii=False, indent=2,
 col_a, col_b = st.columns(2)
 with col_a:
     st.download_button(
-        "Excel-Workbook (.xlsx)",
+        t("dl.xlsx"),
         data=xlsx_path.read_bytes(),
         file_name="Losung-Ergebnis.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 with col_b:
     st.download_button(
-        "Manifest (.json, inkl. Hashes)",
+        t("dl.manifest"),
         data=json_buf.getvalue(),
         file_name="Losung-Manifest.json",
         mime="application/json",
