@@ -1,5 +1,9 @@
 # Losverfahren — Notes & Software Ideas for Stratified Sortition
 
+> **Live demo:** <https://pbd-losverfahren.streamlit.app> — the GUI tool from
+> [`03-gui-tool/`](03-gui-tool/) running on Streamlit Community Cloud with the
+> bundled sample data. No install required.
+
 This repository is a small **set of software‑engineering notes and prototypes**
 written as a friendly suggestion for anyone else working on the
 *tirage au sort* / *Auslosung* of members for a citizens' assembly.

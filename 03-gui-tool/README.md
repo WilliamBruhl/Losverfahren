@@ -1,5 +1,8 @@
 # 03 — Stand‑alone GUI Tool (prototype)
 
+> **Live demo:** <https://pbd-losverfahren.streamlit.app> — try the tool in
+> the browser with the bundled sample data, no install required.
+
 A small Python package that implements the maximin stratified sortition idea
 from Flanigan et al. (2021) end‑to‑end. It runs entirely on its own — there
 is **no dependency on the legacy Excel workbook** in `01-existing-implementation/`.
