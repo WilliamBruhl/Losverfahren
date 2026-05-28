@@ -549,10 +549,31 @@ with t_s:
 
 with t_b:
     st.markdown("**Mitglieder — Quoten-Intervall vs. realisiert**")
-    st.dataframe(_bounds_table(members, quotas), width='stretch')
+    st.caption(
+        "🟡 gelb hinterlegte Zeilen = die Standardgrenzen `lo_default` / "
+        "`hi_default` mussten relaxiert werden, damit der Solver lösbar bleibt "
+        "(z.B. weil der Kandidatenpool nicht genug Personen einer Kategorie "
+        "enthält). 🔴 rot = realisierte Anzahl außerhalb des effektiven "
+        "Intervalls (sollte praktisch nie vorkommen)."
+    )
+
+    def _style_bounds(df: pd.DataFrame):
+        def row_style(row):
+            relaxed = (row["lo_default"] != row["lo_effective"]
+                       or row["hi_default"] != row["hi_effective"])
+            out_of_range = not row["in range"]
+            if out_of_range:
+                return ["background-color: #f8d7da"] * len(row)  # light red
+            if relaxed:
+                return ["background-color: #fff3cd"] * len(row)  # light yellow
+            return [""] * len(row)
+        return df.style.apply(row_style, axis=1)
+
+    st.dataframe(_style_bounds(_bounds_table(members, quotas)),
+                 width='stretch')
     if substitutes is not None:
         st.markdown("**Ersatz — Quoten-Intervall vs. realisiert**")
-        st.dataframe(_bounds_table(substitutes, sub_quotas),
+        st.dataframe(_style_bounds(_bounds_table(substitutes, sub_quotas)),
                      width='stretch')
 
 with t_p:
