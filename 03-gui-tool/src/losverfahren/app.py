@@ -39,7 +39,7 @@ from losverfahren.io_excel import (  # noqa: E402
 )
 from losverfahren.manifest import build_manifest, manifest_audit_rows  # noqa: E402
 from losverfahren.quotas import Quota, default_joint_quotas, default_quotas  # noqa: E402
-from losverfahren.selection import select_panel  # noqa: E402
+from losverfahren.selection import _candidate_in_quota, select_panel  # noqa: E402
 
 
 # Look for sample-data next to the package (works whether the app is run from
@@ -517,18 +517,18 @@ def _panel_table(r) -> pd.DataFrame:
 
 def _bounds_table(r, qs) -> pd.DataFrame:
     rows = []
-    counts = {(q.feature, q.value): 0 for q in qs}
-    for c in r.panel:
-        for f, v in c.attrs.items():
-            if (f, v) in counts:
-                counts[(f, v)] += 1
-    for q, (lo, hi) in zip(qs, r.effective_bounds):
+    # Count realised members per quota, honouring joint quotas (whose feature
+    # name contains × and value contains |) via the same matcher the solver
+    # uses. The previous (f, v)-tuple lookup only worked for marginals and
+    # left joint rows stuck at 0.
+    counts = [sum(1 for c in r.panel if _candidate_in_quota(c, q)) for q in qs]
+    for q, (lo, hi), ist in zip(qs, r.effective_bounds, counts):
         rows.append({
             "feature": q.feature, "value": q.value,
             "lo_default": q.lo, "lo_effective": lo,
-            "ist": counts[(q.feature, q.value)],
+            "ist": ist,
             "hi_effective": hi, "hi_default": q.hi,
-            "in range": lo <= counts[(q.feature, q.value)] <= hi,
+            "in range": lo <= ist <= hi,
         })
     return pd.DataFrame(rows)
 
