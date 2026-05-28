@@ -56,6 +56,38 @@ for _candidate in (
 else:
     SAMPLE_DIR = _HERE.parents[2] / "sample-data"
 
+# Same discovery for the curated test-data bundles (Wallonia, UK, town
+# council). The folder lives next to ``sample-data``.
+TESTDATA_DIR: Path | None = None
+for _candidate in (
+    SAMPLE_DIR.parent / "test-data",
+    _HERE.parents[2] / "test-data",
+    _HERE.parents[3] / "03-gui-tool" / "test-data",
+):
+    if _candidate.exists():
+        TESTDATA_DIR = _candidate
+        break
+
+
+def _discover_examples() -> dict[str, Path]:
+    """Map a human label to a directory containing candidates+population CSVs."""
+    # Pretty German labels for the bundled folders; fall back to the
+    # directory name for anything else dropped into ``test-data/``.
+    pretty = {
+        "wallonia-fr": "Wallonie — Assemblée citoyenne (FR)",
+        "uk-climate-en": "UK — Climate Assembly (EN)",
+        "town-council-de": "Kleiner Bürgerrat — Beispielgemeinde (DE)",
+    }
+    out: dict[str, Path] = {}
+    if SAMPLE_DIR.exists() and (SAMPLE_DIR / "candidates.csv").exists():
+        out["PBD-Vorlage (DE, eingebaut)"] = SAMPLE_DIR
+    if TESTDATA_DIR is not None:
+        for sub in sorted(TESTDATA_DIR.iterdir()):
+            if sub.is_dir() and (sub / "candidates.csv").exists() \
+                    and (sub / "population.csv").exists():
+                out[pretty.get(sub.name, sub.name)] = sub
+    return out
+
 st.set_page_config(page_title="Losverfahren — Bürgerpanel", layout="wide")
 st.title("Losverfahren — geschichtete Zufallsauswahl")
 st.caption(
@@ -153,14 +185,35 @@ with st.sidebar:
     joint_path: Path | None = None
 
     if source == "Beispiel-Daten verwenden":
-        cand_path = SAMPLE_DIR / "candidates.csv"
-        pop_path = SAMPLE_DIR / "population.csv"
-        joint_candidate = SAMPLE_DIR / "population_joint.csv"
+        examples = _discover_examples()
+        if not examples:
+            st.error("Keine Beispiel-Datensätze gefunden.")
+            st.stop()
+        labels = list(examples.keys())
+        choice = st.selectbox(
+            "Beispiel-Datensatz",
+            labels,
+            index=0,
+            help=(
+                "Drei kuratierte Datensätze plus die PBD-Vorlage. Jeder "
+                "demonstriert ein anderes Schema/eine andere Sprache — "
+                "die Tool-Logik passt sich automatisch an."
+            ),
+        )
+        chosen_dir = examples[choice]
+        cand_path = chosen_dir / "candidates.csv"
+        pop_path = chosen_dir / "population.csv"
+        joint_candidate = chosen_dir / "population_joint.csv"
         joint_path = joint_candidate if joint_candidate.exists() else None
         if not cand_path.exists():
-            st.error(f"Beispiel-Daten nicht gefunden unter {SAMPLE_DIR}")
+            st.error(f"Beispiel-Daten nicht gefunden unter {chosen_dir}")
             st.stop()
-        st.success(f"Beispiel-Daten geladen aus {SAMPLE_DIR}")
+        readme = chosen_dir / "README.md"
+        if readme.exists():
+            with st.expander("Datensatz-Beschreibung", expanded=False):
+                st.markdown(readme.read_text(encoding="utf-8"))
+        joint_note = "" if joint_path is None else " + Joint-Verteilung"
+        st.success(f"Geladen: **{choice}**{joint_note}")
     else:
         cand_up = st.file_uploader(
             "Kandidatenliste (.csv oder .xlsx)", type=["csv", "xlsx"], key="cand"
