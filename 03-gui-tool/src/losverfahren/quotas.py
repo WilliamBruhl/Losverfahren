@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Quota intervals per feature value.
 
 Given a panel size ``k`` and population shares ``π``, the default quota for a

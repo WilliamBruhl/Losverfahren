@@ -13,10 +13,12 @@ roughly ordered from "lowest effort, highest value" to "nice to have".
 A first prototype of these improvements is already included:
 
 - [patch_workbook.py](patch_workbook.py) — Python script (uses `openpyxl`,
-  no other dependencies) that reads
-  [../01-existing-implementation/PBD_Losung-Template.xlsx](../01-existing-implementation/PBD_Losung-Template.xlsx),
+  no other dependencies) that reads the original
+  `PBD_Losung-Template.xlsx` workbook (not redistributed in this repo —
+  place a local copy under `../01-existing-implementation/`),
   applies suggestions A–G, and writes a patched workbook.
-- [PBD_Losung-Patched.xlsx](PBD_Losung-Patched.xlsx) — the resulting workbook.
+- `PBD_Losung-Patched.xlsx` — the resulting workbook (generated locally,
+  not redistributed).
   The original sheets are kept untouched; the new logic lives in additional
   sheets:
   - `GemeindeMapping` — Nord/Süd table (A),

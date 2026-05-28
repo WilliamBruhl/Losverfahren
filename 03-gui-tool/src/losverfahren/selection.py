@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Fair stratified selection — prototype.
 
 Implements a simplified version of Flanigan et al. (2021):

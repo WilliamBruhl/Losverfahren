@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Streamlit Community Cloud entry point.
 
 Streamlit Cloud expects an importable ``streamlit_app.py`` at the repo root.

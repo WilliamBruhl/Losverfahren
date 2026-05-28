@@ -34,7 +34,7 @@ own:
 
 | Folder | Contents |
 |---|---|
-| [01-existing-implementation/](01-existing-implementation/) | The current Excel workbook and the slide deck explaining the procedure, plus a short walk‑through and a few observations from a software point of view. |
+| [01-existing-implementation/](01-existing-implementation/) | A short walk‑through of the current Excel‑based procedure and a few observations from a software point of view. The underlying Excel workbook and slide deck are **not redistributed** here — they remain with their author. |
 | [02-simple-excel-improvements/](02-simple-excel-improvements/) | **Track A** — small, local improvements that could be added directly to the existing workbook (no new tool required). |
 | [03-gui-tool/](03-gui-tool/) | **Track B** — sketch of a stand‑alone GUI tool intended for admin staff, reusing existing open‑source code where possible. |
 
@@ -69,3 +69,21 @@ are explicitly discussed in the accompanying slide deck (e.g. the limited
 availability of joint cross‑tabs in the official statistics). They are simply
 the kind of points a software person would want to discuss before turning the
 procedure into a tool.
+
+## License
+
+This project is licensed under the **GNU Affero General Public License v3.0
+or later (AGPL‑3.0‑or‑later)** — see [LICENSE](LICENSE).
+
+AGPL was chosen deliberately: the tool is primarily intended to be **run as
+a hosted web service**, and AGPL extends the GPL copyleft to network use.
+Concretely this means that anyone who modifies the code and makes the
+modified version available to users over a network (including SaaS / hosted
+deployments) **must publish their modifications under the same license**.
+This protects the auditability and transparency that the tool is designed
+for.
+
+The original PBD Excel workbook and the accompanying slide deck that
+inspired this work are **not** included in this repository; they remain the
+property of their respective authors and were shared with permission only
+for the purpose of building this prototype.

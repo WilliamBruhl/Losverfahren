@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """CSV‑native I/O for the GUI tool.
 
 This module is intentionally independent of the legacy Excel layout — it

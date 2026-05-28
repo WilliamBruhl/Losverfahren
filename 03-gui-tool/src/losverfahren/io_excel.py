@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Read the candidate list and population reference from the existing workbook.
 
 The workbook shape is the one of ``PBD_Losung-Template.xlsx``:

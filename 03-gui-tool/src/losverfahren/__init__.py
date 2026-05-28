@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Stratified sortition prototype.
 
 This package implements a small fair-selection pipeline for citizen panels:

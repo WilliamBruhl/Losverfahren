@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Build a self-contained, hashable JSON result + manifest.
 
 The manifest contains:
